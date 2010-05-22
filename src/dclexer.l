@@ -70,9 +70,9 @@ void DCLexerComment(ParseState *Parser);
 ">>="			{ return RIGHT_ASSIGN; }
 "<<="			{ return LEFT_ASSIGN; }
 "+="			{ return ADD_ASSIGN; }
-"-="			{ return SUB_ASSIGN; }
-"*="			{ return MUL_ASSIGN; }
-"/="			{ return DIV_ASSIGN; }
+"-="			{ return SUBTRACT_ASSIGN; }
+"*="			{ return MULTIPLY_ASSIGN; }
+"/="			{ return DIVIDE_ASSIGN; }
 "%="			{ return MOD_ASSIGN; }
 "&="			{ return ARITHMETIC_AND_ASSIGN; }
 "|="			{ return ARITHMETIC_OR_ASSIGN; }
@@ -84,7 +84,7 @@ void DCLexerComment(ParseState *Parser);
 "<<"			{ return LEFT_SHIFT; }
 "++"			{ return INCREMENT; }
 "--"			{ return DECREMENT; }
-"->"			{ return ARROW; }
+"->"			{ return POINTER_ARROW; }
 "&&"			{ return LOGICAL_AND; }
 "||"			{ return LOGICAL_OR; }
 "^^"			{ return LOGICAL_XOR; }

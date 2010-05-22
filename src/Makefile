@@ -10,7 +10,9 @@ CC = g++
 
 # sources list
 EXE = deepc
-CSRCS = deepc.c
+CSRCS = deepc.c preproc.c datatype.c sharestr.c symtable.c lexer.c \
+	parser.c lib.c
+CINCS = deepc.h
 YSRC = dcparser.y
 LSRC = dclexer.l
 
@@ -39,10 +41,10 @@ test: all
 	(cd tests; make test)
 
 clean:
-	rm -f $(EXE) $(OBJS) $(GENSRCS) dcparser.h dclexer.h
+	rm -f $(EXE) $(OBJS) $(GENSRCS) dcparser.h dclexer.h .depend
 
 count:
-	@wc $(CSRCS) $(YSRC) $(LSRC)
+	@wc $(CSRCS) $(YSRC) $(LSRC) $(CINCS)
 
 
 .PHONY: all depend clean count test
