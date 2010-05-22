@@ -1,5 +1,5 @@
 Letter                  [[:alpha:]_]
-LetNum                  [{Letter}_]
+LetNum                  [{Letter}[:digit:]]
 
 /* flex options to work nicely with bison */
 %option reentrant
@@ -12,7 +12,7 @@ LetNum                  [{Letter}_]
 #include "deepc.h"
 #include "dcparser.h"
 
-#define YY_USER_ACTION yylloc->first_line = yylineno;
+//#define YY_USER_ACTION yylloc->first_line = yylineno;
 
 #define YY_INPUT(buf,result,max_size) { result = PreProcRead(yyextra, buf, max_size); }
 
@@ -25,7 +25,6 @@ void DCLexerComment(ParseState *Parser);
 
 
 "auto"			{ return AUTO; }
-"bool"			{ return BOOL; }
 "break"			{ return BREAK; }
 "case"			{ return CASE; }
 "char"			{ return CHAR; }
@@ -41,11 +40,8 @@ void DCLexerComment(ParseState *Parser);
 "for"			{ return FOR; }
 "goto"			{ return GOTO; }
 "if"			{ return IF; }
-"inline"		{ return INLINE; }
 "int"			{ return INT; }
 "long"			{ return LONG; }
-"register"		{ return REGISTER; }
-"restrict"		{ return RESTRICT; }
 "return"		{ return RETURN; }
 "short"			{ return SHORT; }
 "signed"		{ return SIGNED; }
@@ -65,9 +61,9 @@ void DCLexerComment(ParseState *Parser);
 0[xX][:xdigit:]+	{ return LexerIntegerConstant(yyextra, &yylval->Tree, yytext+2, 16); }
 0[:digit:]+		{ return LexerIntegerConstant(yyextra, &yylval->Tree, yytext+1, 8); }
 [:digit:]+		{ return LexerIntegerConstant(yyextra, &yylval->Tree, yytext, 10); }
-'(\\.|[^\\'\n])+'	{ return LexerCharConstant(yyextra, &yylval->Tree, yytext); }
+'[^']*'			{ return LexerCharConstant(yyextra, &yylval->Tree, yytext); }
 
-\"(\\.|[^\\"\n])*\"	{ return LexerStringConstant(yyextra, &yylval->Tree, yytext); }
+\"[^\"]*\"		{ return LexerStringConstant(yyextra, &yylval->Tree, yytext); }
 
 ".."			{ return RANGE; }
 "..."			{ return ELLIPSIS; }
@@ -78,20 +74,24 @@ void DCLexerComment(ParseState *Parser);
 "*="			{ return MUL_ASSIGN; }
 "/="			{ return DIV_ASSIGN; }
 "%="			{ return MOD_ASSIGN; }
-"&="			{ return AND_ASSIGN; }
-"^="			{ return XOR_ASSIGN; }
-"|="			{ return OR_ASSIGN; }
-">>"			{ return RIGHT_OP; }
-"<<"			{ return LEFT_OP; }
-"++"			{ return INC_OP; }
-"--"			{ return DEC_OP; }
-"->"			{ return PTR_OP; }
-"&&"			{ return AND_OP; }
-"||"			{ return OR_OP; }
-"<="			{ return LE_OP; }
-">="			{ return GE_OP; }
-"=="			{ return EQ_OP; }
-"!="			{ return NE_OP; }
+"&="			{ return ARITHMETIC_AND_ASSIGN; }
+"|="			{ return ARITHMETIC_OR_ASSIGN; }
+"^="			{ return ARITHMETIC_XOR_ASSIGN; }
+"&&="			{ return LOGICAL_AND_ASSIGN; }
+"||="			{ return LOGICAL_OR_ASSIGN; }
+"^^="			{ return LOGICAL_XOR_ASSIGN; }
+">>"			{ return RIGHT_SHIFT; }
+"<<"			{ return LEFT_SHIFT; }
+"++"			{ return INCREMENT; }
+"--"			{ return DECREMENT; }
+"->"			{ return ARROW; }
+"&&"			{ return LOGICAL_AND; }
+"||"			{ return LOGICAL_OR; }
+"^^"			{ return LOGICAL_XOR; }
+"<="			{ return LESS_EQUAL; }
+">="			{ return GREATER_EQUAL; }
+"=="			{ return EQUAL; }
+"!="			{ return NOT_EQUAL; }
 ";"			{ return ';'; }
 "{"			{ return '{'; }
 "}"			{ return '}'; }
@@ -136,15 +136,4 @@ void DCLexerComment(ParseState *Parser);
  
 void CLexerComment(ParseState *Parser)
 {
-    char c, prev = 0;
-  
-    while ((c = lexinput(Parser)) != 0)      /* (EOF maps to 0) */
-    {
-        if (c == '/' && prev == '*')
-            return;
-            
-        prev = c;
-    }
-    
-    ProgramFail(Parser, "unterminated comment");
 }
