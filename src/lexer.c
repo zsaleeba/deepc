@@ -234,7 +234,7 @@ int LexerCharConstant(ParseState *Parser, ParseTree **Dest, const char *SrcText)
  * ACTION:      Lex a string constant
  * PARAMETERS:  ParseState *Parser - the parser
  *              ParseTree **Dest - where to put the result
- *              const char *SrcText - the identifier
+ *              const char *SrcText - the string
  * RETURNS:     enum yytokentype - CONSTANT
  */
  
@@ -270,4 +270,19 @@ int LexerStringConstant(ParseState *Parser, ParseTree **Dest, const char *SrcTex
     NewVal->v.Array.Data = (void *)SharedStr;
     *Dest = ParseTreeConstant(NewVal);
     return CONSTANT;
+}
+
+
+/*
+ * NAME:        LexerIdentifier
+ * ACTION:      Lex an identifier
+ * PARAMETERS:  ParseState *Parser - the parser
+ *              ParseTree **Dest - where to put the result
+ *              const char *SrcText - the identifier
+ * RETURNS:     enum yytokentype - CONSTANT
+ */
+ 
+int LexerIdentifier(ParseState *Parser, const char **Dest, const char *SrcText)
+{
+    return IDENTIFIER;
 }

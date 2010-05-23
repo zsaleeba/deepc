@@ -53,3 +53,8 @@ module
     : CONSTANT
 
 %%
+void DCParser_error(struct YYLTYPE *Location, ParseState *Parser, char const *Message)
+{
+    Parser->Location = Location;
+    ProgramFail(Parser, Message);
+}

@@ -4,6 +4,7 @@
 # compile options
 CFLAGS = -Wall -g
 LIBS = -lm
+CXXFLAGS = $(CFLAGS)
 
 # we compile with g++ since we need to link with LLVM
 CC = g++
@@ -12,12 +13,13 @@ CC = g++
 EXE = deepc
 CSRCS = deepc.c preproc.c datatype.c sharestr.c symtable.c lexer.c \
 	parser.c lib.c
+CXXSRCS = codegen.cpp
 CINCS = deepc.h
 YSRC = dcparser.y
 LSRC = dclexer.l
 
 GENSRCS = $(YSRC:%.y=%.c) $(LSRC:%.l=%.c)
-OBJS = $(CSRCS:%.c=%.o) $(GENSRCS:%.c=%.o)
+OBJS = $(CSRCS:%.c=%.o) $(CXXSRCS:%.cpp=%.o) $(GENSRCS:%.c=%.o)
 
 
 # targets

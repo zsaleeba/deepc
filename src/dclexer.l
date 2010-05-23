@@ -129,11 +129,11 @@ void DCLexerComment(ParseState *Parser);
 #endif
 
 /*
- * NAME:        CLexerComment
+ * NAME:        DCLexerComment
  * ACTION:      Absorb a comment
  * PARAMETERS:  ParseState *Parser - the parser
  */
  
-void CLexerComment(ParseState *Parser)
+void DCLexerComment(ParseState *Parser)
 {
 }
