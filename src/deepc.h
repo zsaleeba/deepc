@@ -4,6 +4,7 @@
 /* system includes */
 #include <stdio.h>
 
+#if 0
 /* some extra data so the lexer can track the parser state */
 #define YY_EXTRA_TYPE ParseState *
 
@@ -344,5 +345,6 @@ void Cleanup(ParseState *Parser);
 void ProgramFail(ParseState *Parser, const char *Format, ...);
 void ProgramErrorMessage(ParseState *Parser, const char *Format, ...);
 void *CheckedAlloc(int Size);
+#endif
 
 #endif /* DEEPC_H */

@@ -13,7 +13,7 @@ CXXINCS = deepc.h
 YSRC = dcparser.y
 LSRC = dclexer.l
 
-GENSRCS = $(YSRC:%.y=%.c) $(LSRC:%.l=%.c)
+GENSRCS = $(YSRC:%.y=%.cpp) $(LSRC:%.l=%.cpp)
 OBJS = $(CSRCS:%.c=%.o) $(CXXSRCS:%.cpp=%.o) $(GENSRCS:%.c=%.o)
 
 
@@ -24,11 +24,11 @@ all: depend $(EXE)
 $(EXE): $(OBJS)
 	$(CXX) -o $(EXE) $(OBJS) $(LIBS)
 
-dcparser.c dcparser.h: dcparser.y
-	bison -d -o dcparser.c dcparser.y
+dcparser.cpp dcparser.hpp location.hh position.hh stack.hh: dcparser.y
+	bison -d -o dcparser.cpp dcparser.y
 
-dclexer.c dclexer.h: dclexer.l dcparser.h
-	flex -o dclexer.c --header-file=dclexer.h dclexer.l
+dclexer.cpp dclexer.h: dclexer.l dcparser.hpp
+	flex -o dclexer.cpp --header-file=dclexer.h dclexer.l
 
 
 depend: $(CSRCS) $(GENSRCS)
@@ -38,7 +38,7 @@ test: all
 	(cd tests; make test)
 
 clean:
-	rm -f $(EXE) $(OBJS) $(GENSRCS) dcparser.h dclexer.h .depend
+	rm -f $(EXE) $(OBJS) $(GENSRCS) dcparser.hpp location.hh position.hh stack.hh dclexer.h .depend
 
 count:
 	@wc $(CSRCS) $(YSRC) $(LSRC) $(CINCS)

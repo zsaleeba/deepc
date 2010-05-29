@@ -2,11 +2,11 @@ Letter                  [[:alpha:]_]
 LetNum                  [{Letter}[:digit:]]
 
 /* flex options to work nicely with bison */
-%option reentrant
-%option prefix="DCParser_"
-%option bison-bridge bison-locations
+%option c++
+%option yyclass="DCLexer"
 %option yylineno
 %option noyywrap
+%option nodefault
 
 %{
 #include "deepc.h"

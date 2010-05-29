@@ -31,6 +31,7 @@ class DataType
     //DataType *DerivedTypeList;      /* first in a list of types derived from this one */
     //DataType *Next;                 /* next item in the derived type list */
     //SymTable *Members;              /* members of a struct or union */
+    
 public:
     DataType();
 };

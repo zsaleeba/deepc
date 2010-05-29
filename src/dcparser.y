@@ -10,25 +10,30 @@
 #include "datatype.h"
 
 using namespace std;
-
-#define Lexer Parser->Lexer
 %}
 
 /* %expect 1 */
-%pure-parser
-%name-prefix="DCParser_"
+%skeleton "lalr1.cc"            /* create a C++ parser */
 %locations
 %defines
+%define parser_class_name "DCParser"
 %error-verbose
 
-%lex-param   {void *Lexer}
-%parse-param {ParseState *Parser}
+%parse-param {Parser &p}
+%lex-param   {DCLexer &l}
 
 %union 
 {
     ParseTree *Tree;            /* a parse tree */
     DataType *DType;            /* a data type */
-    string Identifier;          /* an identifier */
+//    string Identifier;          /* an identifier */
+}
+
+%code {
+	// Prototype for the yylex function
+	static int yylex(semantic_type *yylval,
+	                 location_type *yylloc,
+	                 DCLexer &l);
 }
 
 %token TYPEDEF EXTERN STATIC AUTO REGISTER INLINE RESTRICT CONST VOLATILE
@@ -57,8 +62,16 @@ module
     : CONSTANT
 
 %%
-void DCParser_error(struct YYLTYPE *Location, ParseState *Parser, char const *Message)
+void Parser::error(Parser::location_type &Location, const std::string &Message)
 {
-    Parser->Location = Location;
-    ProgramFail(Parser, Message);
+    ProgramFail(Message);
 }
+
+
+static int yylex(Parser::semantic_type *yylval,
+                 Parser::location_type *yylloc,
+                 DCLexer &l) 
+{
+	return scanner.yylex(yylval, yylloc);
+}
+
