@@ -1,4 +1,4 @@
-/* codegen.c */
+/* codegen.cpp */
 
 #include "deepc.h"
 

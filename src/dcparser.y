@@ -5,7 +5,11 @@
  */
 
 %{
-#include "deepc.h"
+#include <string>
+#include "parser.h"
+#include "datatype.h"
+
+using namespace std;
 
 #define Lexer Parser->Lexer
 %}
@@ -24,7 +28,7 @@
 {
     ParseTree *Tree;            /* a parse tree */
     DataType *DType;            /* a data type */
-    const char *Identifier;     /* an identifier */
+    string Identifier;          /* an identifier */
 }
 
 %token TYPEDEF EXTERN STATIC AUTO REGISTER INLINE RESTRICT CONST VOLATILE

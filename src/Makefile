@@ -2,19 +2,14 @@
 # - by Zik Saleeba 2010-05-22
 
 # compile options
-CFLAGS = -Wall -g
+CXXFLAGS = -Wall -g
 LIBS = -lm
-CXXFLAGS = $(CFLAGS)
-
-# we compile with g++ since we need to link with LLVM
-CC = g++
 
 # sources list
 EXE = deepc
-CSRCS = deepc.c preproc.c datatype.c sharestr.c symtable.c lexer.c \
-	parser.c lib.c
-CXXSRCS = codegen.cpp
-CINCS = deepc.h
+CXXSRCS = deepc.c preproc.cpp datatype.cpp lexer.cpp parser.cpp \
+	deeplib.cpp codegen.cpp
+CXXINCS = deepc.h
 YSRC = dcparser.y
 LSRC = dclexer.l
 
