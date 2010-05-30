@@ -9,6 +9,7 @@
 
 class ParseTree;
 class DataType;
+class Compiler;
 
 using namespace std;
 %}
@@ -20,8 +21,8 @@ using namespace std;
 %define parser_class_name "DCParser"
 %error-verbose
 
-%parse-param {Parser &p}
-%lex-param   {DCLexer &l}
+%parse-param {Compiler &dcc}
+%lex-param   {DCLexer &dcl}
 
 %union 
 {
@@ -32,9 +33,9 @@ using namespace std;
 
 %code {
 	// Prototype for the yylex function
-	static int yylex(semantic_type *yylval,
-	                 location_type *yylloc,
-	                 DCLexer &l);
+//	static int yylex(semantic_type *yylval,
+//	                 location_type *yylloc,
+//	                 DCLexer &dcl);
 }
 
 %token TYPEDEF EXTERN STATIC AUTO REGISTER INLINE RESTRICT CONST VOLATILE
@@ -69,10 +70,10 @@ void Parser::error(Parser::location_type &Location, const std::string &Message)
 }
 
 
-static int yylex(Parser::semantic_type *yylval,
-                 Parser::location_type *yylloc,
-                 DCLexer &l) 
-{
-	return scanner.yylex(yylval, yylloc);
-}
+//static int yylex(Parser::semantic_type *yylval,
+//                 Parser::location_type *yylloc,
+//                 DCLexer &l) 
+//{
+//	return scanner.yylex(yylval, yylloc);
+//}
 

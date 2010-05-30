@@ -7,7 +7,7 @@ LIBS = -lm
 
 # sources list
 EXE = deepc
-CXXSRCS = deepc.cpp compiler.cpp preproc.cpp
+CXXSRCS = deepc.cpp compiler.cpp preproc.cpp dclexerclass.cpp
 # 	datatype.cpp lexer.cpp parsetree.cpp \
 #	deeplib.cpp codegen.cpp
 CXXINCS = deepc.h

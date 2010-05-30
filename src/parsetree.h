@@ -4,6 +4,10 @@
 #include <stdio.h>
 #include <string>
 
+class ParseTree;
+class DataType;
+class Compiler;
+
 #include "dcparser.hpp"
 
 using namespace std;
@@ -83,8 +87,8 @@ enum Cmd
 union ParseTreeArgs
 {
     //Value *Val;                 /* value argument for CmdConstant constants */
-    string Identifier;          /* identifier when doing CmdIdentifier */
-    //DataType *DType;            /* data type when doing CmdType */
+    //string Identifier;          /* identifier when doing CmdIdentifier */
+    DataType *DType;            /* data type when doing CmdType */
     //ParseTree *Arg[MAX_PARSE_TREE_ARGS]; /* sub-trees for command parameters */
 };
 

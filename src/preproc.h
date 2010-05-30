@@ -53,9 +53,11 @@ public:
     //
     // NAME:        Read
     // ACTION:      Called by the lexer to get pre-processed input from the pre-processor
-    // RETURNS:     string - the data read or empty string at EOF
+    // PARAMETERS:  char *ReadBuf - where to place the data which has been read
+    //              int Length - maximum data length to read
+    // RETURNS:     int - number of bytes read or 0 at EOF
     //
-    string Read();
+    int Read(char *ReadBuf, int Length);
 };
 
 #endif /* PREPROC_H */

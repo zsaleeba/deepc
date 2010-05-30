@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <algorithm>
 #include <stdlib.h>
 
 
@@ -73,32 +74,39 @@ void PreProcessor::Close()
 
 
 //
-// NAME:        PreProcessor::Read
+// NAME:        Read
 // ACTION:      Called by the lexer to get pre-processed input from the pre-processor
-// RETURNS:     string - the data read or empty string at EOF
+// PARAMETERS:  char *ReadBuf - where to place the data which has been read
+//              int Length - maximum data length to read
+// RETURNS:     int - number of bytes read or 0 at EOF
 //
- 
-string PreProcessor::Read()
+
+int PreProcessor::Read(char *ReadBuf, int Length)
 {
-    string Result;
-    
     if (mIsInteractive)
     {
         /* read a line from the console */
-        if (!cin.eof())
+        if (cin.eof())
+            return 0;
+        else
+        {
+            string Result;
+            
             getline(cin, Result);
+            Result.copy(ReadBuf, Length);
+            
+            return min((int)Result.length(), Length);
+        }
     }
     else
     {
         /* read a large block of data from the input file */
-        if (!mInputStream.eof())
+        if (mInputStream.eof())
+            return 0;
+        else
         {
-            char ReadBuf[ReadBufSize];
-            
             mInputStream.read(&ReadBuf[0], ReadBufSize);
-            Result.assign(ReadBuf, mInputStream.gcount());
+            return mInputStream.gcount();
         }
     }
-
-    return Result;
 }
