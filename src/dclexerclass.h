@@ -1,9 +1,13 @@
 #ifndef DCLEXERCLASS_H
 #define DCLEXERCLASS_H
 
-#include <FlexLexer.h>
+class ParseTree;
+class DataType;
+class Compiler;
+class DCLexer;
 
 #include "preproc.h"
+#include "dcparser.hpp"
 
 
 class DCLexer : public yyFlexLexer
@@ -11,6 +15,13 @@ class DCLexer : public yyFlexLexer
     // the preprocessor we call to get input
     PreProcessor PreProc;
 
+			
+    // point to yylval (provided by Bison in overloaded yylex)
+    yy::DCParser::semantic_type *yylval;
+    
+    // pointer to yylloc (provided by Bison in overloaded yylex)
+    yy::DCParser::location_type *yylloc;
+    
     //
     // flex defines this method for us
     //
@@ -41,6 +52,16 @@ public:
     // PARAMETERS:  string SourceFileName - empty string for console input
     //
     void Init(string SourceFileName);
+
+    //
+    // an externally visible version of yylex() with yylval and yylloc
+    //
+    int yylex(yy::DCParser::semantic_type *p_yylval, yy::DCParser::location_type *p_yylloc)
+    {
+        yylval = p_yylval;
+        yylloc = p_yylloc;
+        return yylex();
+    }
 };
 
 #endif /* DCLEXERCLASS_H */

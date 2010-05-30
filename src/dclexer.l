@@ -11,6 +11,8 @@ LetNum                  [{Letter}[:digit:]]
 %{
 class ParseTree;
 class DataType;
+class Compiler;
+class DCLexer;
 
 #include "compiler.h"
 #include "preproc.h"

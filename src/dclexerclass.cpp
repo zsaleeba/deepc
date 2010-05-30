@@ -1,3 +1,5 @@
+#include <FlexLexer.h>
+
 #include "dclexerclass.h"
 #include "parsetree.h"
 #include "datatype.h"

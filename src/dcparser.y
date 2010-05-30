@@ -10,8 +10,17 @@
 class ParseTree;
 class DataType;
 class Compiler;
+class DCLexer;
+
+#include <FlexLexer.h>
+
+#include "dclexerclass.h"
 
 using namespace std;
+
+// tell the parser to call our lexer object instead of a global yylex function
+#define yylex(yylval, yylloc, dcl) dcl->yylex(yylval, yylloc)
+
 %}
 
 /* %expect 1 */
@@ -21,21 +30,15 @@ using namespace std;
 %define parser_class_name "DCParser"
 %error-verbose
 
-%parse-param {Compiler &dcc}
-%lex-param   {DCLexer &dcl}
+%parse-param {Compiler *dcc}
+%parse-param {DCLexer *dcl}
+%lex-param   {DCLexer *dcl}
 
 %union 
 {
     ParseTree *Tree;            /* a parse tree */
     DataType *DType;            /* a data type */
-//    string Identifier;          /* an identifier */
-}
-
-%code {
-	// Prototype for the yylex function
-//	static int yylex(semantic_type *yylval,
-//	                 location_type *yylloc,
-//	                 DCLexer &dcl);
+    string *Identifier;         /* an identifier */
 }
 
 %token TYPEDEF EXTERN STATIC AUTO REGISTER INLINE RESTRICT CONST VOLATILE
@@ -64,16 +67,12 @@ module
     : CONSTANT
 
 %%
-void Parser::error(Parser::location_type &Location, const std::string &Message)
-{
-    ProgramFail(Message);
-}
 
+namespace yy {
 
-//static int yylex(Parser::semantic_type *yylval,
-//                 Parser::location_type *yylloc,
-//                 DCLexer &l) 
-//{
-//	return scanner.yylex(yylval, yylloc);
-//}
+    void DCParser::error(const location_type &Loc, const std::string &Message)
+    {
+        cout << Message;
+    }
 
+};
