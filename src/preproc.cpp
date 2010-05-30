@@ -1,6 +1,9 @@
 /* preproc.cpp */
 #include "preproc.h"
-#include "deeplib.h"
+
+#include <iostream>
+#include <fstream>
+#include <stdlib.h>
 
 
 /* size of the read buffer */
@@ -13,7 +16,6 @@ const int PreProcessor::ReadBufSize;
 //
  
 PreProcessor::PreProcessor() :
-    mInputStream(NULL), 
     mIsInteractive(false)
 {
 }
@@ -42,14 +44,16 @@ void PreProcessor::Open(string FileName)
     {
         /* start reading from the console */
         mIsInteractive = true;
-        mInputStream = NULL;
     }
     else
     {
         /* start reading a file */
-        mInputStream = fopen(FileName.c_str(), "r");
-        if (mInputStream == NULL)
-            ProgramFail(Parser, "can't open file '%S'", FileName);
+        mInputStream.open(FileName.c_str());
+        if (!mInputStream.is_open())
+        {
+            cout << "can't open file '" << FileName << "'\n";
+            exit(1);
+        }
     
         mSourceFileName = FileName;
     }
@@ -63,11 +67,8 @@ void PreProcessor::Open(string FileName)
  
 void PreProcessor::Close()
 {
-    if (!mIsInteractive && mInputStream != NULL)
-    {
-        fclose(mInputStream);
-        mInputStream = NULL;
-    }
+    if (!mIsInteractive && mInputStream.is_open())
+        mInputStream.close();
 }
 
 
@@ -79,24 +80,25 @@ void PreProcessor::Close()
  
 string PreProcessor::Read()
 {
-    char ReadBuf[ReadBufSize+1];
+    string Result;
     
     if (mIsInteractive)
     {
         /* read a line from the console */
-        ReadBuf[ReadBufSize] = '\0';
-        if (fgets(ReadBuf, ReadBufSize, stdin) == NULL)
-            return "";
-        else
-            return string(ReadBuf);
+        if (!cin.eof())
+            getline(cin, Result);
     }
     else
     {
-        /* read a block of data from the input file */
-        int BytesRead = fread(ReadBuf, 1, MaxSize, mInputStream);
-        if (BytesRead < 0)
-            return "";
-        else
-            return string(ReadBuf, BytesRead);
+        /* read a large block of data from the input file */
+        if (!mInputStream.eof())
+        {
+            char ReadBuf[ReadBufSize];
+            
+            mInputStream.read(&ReadBuf[0], ReadBufSize);
+            Result.assign(ReadBuf, mInputStream.gcount());
+        }
     }
+
+    return Result;
 }

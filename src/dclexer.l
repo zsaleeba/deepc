@@ -10,7 +10,7 @@ LetNum                  [{Letter}[:digit:]]
 
 %{
 #include "deepc.h"
-#include "dcparser.h"
+#include "dcparser.hpp"
 
 //#define YY_USER_ACTION yylloc->first_line = yylineno;
 

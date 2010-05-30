@@ -6,14 +6,15 @@
 
 %{
 #include <string>
-#include "parser.h"
-#include "datatype.h"
+
+class ParseTree;
+class DataType;
 
 using namespace std;
 %}
 
 /* %expect 1 */
-%skeleton "lalr1.cc"            /* create a C++ parser */
+%skeleton "lalr1.cc"            /* this will be a C++ parser */
 %locations
 %defines
 %define parser_class_name "DCParser"

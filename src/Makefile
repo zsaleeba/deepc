@@ -7,14 +7,15 @@ LIBS = -lm
 
 # sources list
 EXE = deepc
-CXXSRCS = deepc.c preproc.cpp datatype.cpp lexer.cpp parser.cpp \
-	deeplib.cpp codegen.cpp
+CXXSRCS = deepc.cpp compiler.cpp preproc.cpp
+# 	datatype.cpp lexer.cpp parsetree.cpp \
+#	deeplib.cpp codegen.cpp
 CXXINCS = deepc.h
 YSRC = dcparser.y
 LSRC = dclexer.l
 
 GENSRCS = $(YSRC:%.y=%.cpp) $(LSRC:%.l=%.cpp)
-OBJS = $(CSRCS:%.c=%.o) $(CXXSRCS:%.cpp=%.o) $(GENSRCS:%.c=%.o)
+OBJS = $(CXXSRCS:%.cpp=%.o) $(GENSRCS:%.cpp=%.o)
 
 
 # targets
@@ -31,8 +32,8 @@ dclexer.cpp dclexer.h: dclexer.l dcparser.hpp
 	flex -o dclexer.cpp --header-file=dclexer.h dclexer.l
 
 
-depend: $(CSRCS) $(GENSRCS)
-	$(CXX) $(CXXFLAGS) -MM $(CSRCS) $(GENSRCS) >.depend
+depend: $(CXXSRCS) $(GENSRCS)
+	$(CXX) $(CXXFLAGS) -MM $(CXXSRCS) $(GENSRCS) >.depend
 
 test: all
 	(cd tests; make test)

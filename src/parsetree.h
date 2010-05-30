@@ -1,10 +1,10 @@
-#ifndef PARSER_H
-#define PARSER_H
+#ifndef PARSETREE_H
+#define PARSETREE_H
 
 #include <stdio.h>
 #include <string>
 
-#include "dcparser.h"
+#include "dcparser.hpp"
 
 using namespace std;
 
@@ -99,30 +99,4 @@ class ParseTree
     //union ParseTreeArgs a;    
 };
 
-class Parser
-{
-    /* lexer */
-    string mSourceFileName;
-    YYLTYPE *mLocation;
-//    void *Lexer;
-    
-    /* parser result */
-    ParseTree *Tree;
-
-public:
-    /*
-     * NAME:        Parser::Parser
-     * ACTION:      Constructor to initialise the preprocessor to read and
-     *              process a file
-     * PARAMETERS:  Parser &p - the parser
-     *              string FileName - the file to start parsing, empty for console input
-     */
-    Parser(Parser &p, string FileName);
-    
-    ~Parser();
-    
-    // accessors
-    YYLTYPE *Location() { return mLocation; };
-};
-
-#endif /* PARSER_H */
+#endif /* PARSETREE_H */

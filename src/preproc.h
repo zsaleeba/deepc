@@ -2,9 +2,7 @@
 #define PREPROC_H
 
 #include <string>
-
-#include "parser.h"
-
+#include <fstream>
 
 using namespace std;
 
@@ -19,8 +17,8 @@ class PreProcessor
     static const int ReadBufSize = 16384;
     
     // input
-    FILE *mInputStream;
-    int mIsInteractive;
+    ifstream mInputStream;
+    bool mIsInteractive;
     string mSourceFileName;
         
 public:

@@ -1,9 +1,6 @@
 #ifndef DEEPC_H
 #define DEEPC_H
 
-/* system includes */
-#include <stdio.h>
-
 #if 0
 /* some extra data so the lexer can track the parser state */
 #define YY_EXTRA_TYPE ParseState *

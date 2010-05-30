@@ -1,7 +1,7 @@
 #ifndef DEEPLIB_H
 #define DEEPLIB_H
 
-#include "parser.h"
+class Parser;
 
 /* lib.c */
 void ProgramFail(Parser &p, const char *Format, ...);
