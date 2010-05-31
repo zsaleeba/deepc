@@ -7,10 +7,9 @@ LIBS = -lm
 
 # sources list
 EXE = deepc
-CXXSRCS = deepc.cpp compiler.cpp preproc.cpp dclexerclass.cpp
-# 	datatype.cpp lexer.cpp parsetree.cpp \
-#	deeplib.cpp codegen.cpp
-CXXINCS = deepc.h
+CXXSRCS = deepc.cpp compiler.cpp preproc.cpp dclexerclass.cpp symtable.cpp
+# 	datatype.cpp parsetree.cpp deeplib.cpp codegen.cpp
+CXXINCS = compiler.h  datatype.h  dclexerclass.h  deepc.h  deeplib.h  parsetree.h  preproc.h
 YSRC = dcparser.y
 LSRC = dclexer.l
 
@@ -42,7 +41,7 @@ clean:
 	rm -f $(EXE) $(OBJS) $(GENSRCS) dcparser.hpp location.hh position.hh stack.hh dclexer.h .depend
 
 count:
-	@wc $(CSRCS) $(YSRC) $(LSRC) $(CINCS)
+	@wc $(CXXSRCS) $(YSRC) $(LSRC) $(CXXINCS)
 
 
 .PHONY: all depend clean count test

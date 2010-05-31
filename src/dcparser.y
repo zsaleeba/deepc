@@ -72,7 +72,7 @@ namespace yy {
 
     void DCParser::error(const location_type &Loc, const std::string &Message)
     {
-        cout << Message;
+        cout << Loc << Message << endl;
     }
 
 };

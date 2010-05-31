@@ -34,6 +34,9 @@ class DataType
     
 public:
     DataType();
+    
+    // make a value of this type
+    virtual Value *CreateValue();
 };
 
 #endif /* DATATYPE_H */
