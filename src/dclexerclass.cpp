@@ -28,7 +28,11 @@ int DCLexer::LexerInput(char *ReadBuf, int Length)
     return PreProc.Read(ReadBuf, Length);
 }
 
-void LexerError(const char *Message);
+void DCLexer::LexerError(const char *Message)
+{
+    cout << "lexer error: " << Message << "\n";
+}
+
 
 //
 // NAME:        DCLexer::Comment

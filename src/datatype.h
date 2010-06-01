@@ -1,6 +1,9 @@
 #ifndef DATATYPE_H
 #define DATATYPE_H
 
+/* forward declarations */
+class Value;
+
 /* data types */
 enum BasicType
 {

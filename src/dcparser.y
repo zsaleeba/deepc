@@ -11,6 +11,7 @@ class ParseTree;
 class DataType;
 class Compiler;
 class DCLexer;
+class DataType;
 
 #include <FlexLexer.h>
 

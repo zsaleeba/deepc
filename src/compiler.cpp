@@ -1,5 +1,12 @@
 #include "compiler.h"
 
+#include <FlexLexer.h>
+
+class DataType;
+
+#include "dcparser.hpp"
+#include "dclexerclass.h"
+
 
 //
 // Constructor and destructor
@@ -19,10 +26,15 @@ Compiler::~Compiler()
 //
 // NAME:        Init
 // ACTION:      Initialise the compiler
+// PARAMETERS:  string SourceFileName - the name of the file to parse
 //
 
-void Compiler::Init()
+void Compiler::Init(string SourceFileName)
 {
+    Lexer = new DCLexer();
+    Parser = new yy::DCParser(this, Lexer);
+    
+    Lexer->Init(SourceFileName);
 }
 
 
@@ -33,6 +45,17 @@ void Compiler::Init()
 
 void Compiler::Cleanup()
 {
+    if (Lexer != NULL)
+    {
+        delete Lexer;
+        Lexer = NULL;
+    }
+    
+    if (Parser != NULL)
+    {
+        delete Parser;
+        Parser = NULL;
+    }
 }
 
 
@@ -49,10 +72,13 @@ void Compiler::Cleanup()
 bool Compiler::Compile(string SourceFileName, string DestFileName, CompilationStyle ResultStyle)
 {
     // initialise the compiler
-    Init();
+    Init(SourceFileName);
+    
+    // parse the source
+    bool Success = Parser->parse() == 0;
     
     // free resources
     Cleanup();
     
-    return true;
+    return Success;
 }

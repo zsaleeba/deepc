@@ -8,6 +8,10 @@ using namespace std;
 
 // forward declarations
 class ParseTree;
+class DCLexer;
+namespace yy {
+    class DCParser;
+};
 
 
 //
@@ -30,8 +34,8 @@ class Compiler
 {
     /* lexer */
     string mSourceFileName;
-//    YYLTYPE *mLocation;
-//    void *Lexer;
+    yy::DCParser *Parser;
+    DCLexer *Lexer;
     
     /* parser result */
     ParseTree *Tree;
@@ -39,8 +43,9 @@ class Compiler
     //
     // NAME:        Init
     // ACTION:      Initialise the compiler
+    // PARAMETERS:  string SourceFileName - the name of the file to parse
     //
-    void Init();
+    void Init(string SourceFileName);
     
     //
     // NAME:        Cleanup
