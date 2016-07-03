@@ -1,0 +1,11 @@
+#!/bin/sh
+for file in /usr/lib/llvm-2.8/lib/*.a
+do
+	if [ "x`nm --defined-only --demangle $file | grep T.*$1`" != x ]
+	then
+		echo ""
+		echo "##### $file:"
+		echo ""
+		nm --defined-only --demangle $file | grep "$1"
+	fi
+done

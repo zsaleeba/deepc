@@ -1,0 +1,11 @@
+deepc.o: deepc.cpp compiler.h
+compiler.o: compiler.cpp compiler.h dcparser.hpp stack.hh location.hh \
+  position.hh dclexerclass.h preproc.h
+preproc.o: preproc.cpp preproc.h
+dclexerclass.o: dclexerclass.cpp dclexerclass.h preproc.h dcparser.hpp \
+  stack.hh location.hh position.hh parsetree.h datatype.h
+symtable.o: symtable.cpp symtable.h
+dcparser.o: dcparser.cpp dclexerclass.h preproc.h dcparser.hpp stack.hh \
+  location.hh position.hh
+dclexer.o: dclexer.cpp compiler.h preproc.h dcparser.hpp stack.hh \
+  location.hh position.hh dclexerclass.h
