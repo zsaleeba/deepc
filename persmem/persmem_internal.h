@@ -29,8 +29,14 @@ typedef struct
 
 
 /* Prototypes. */
+unsigned persmemFitToDepth(size_t i);
 size_t persmemRoundUpPowerOf2(size_t i);
 int persmemCreateNewFile(int fd);
+
+/* Buddy bitmap prototypes. */
+
+/* Free list prototypes. */
+void *persmemFreeListPopFirst(unsigned depth);
 
 #endif /* PERSMEM_INTERNAL */
 

@@ -189,21 +189,66 @@ int pmclose(PERSMEM *pm)
 /* For use when handling multiple persistent memory files at the same time. */
 void *pmmalloc(PERSMEM *pm, size_t size)
 {
+    void *mem;
+
     /* What size do we need to allocate? */
-    
-    return NULL;
+    unsigned depth = persmemFitToDepth(size);
+
+    /* Is there a block of this size in the free list? */
+    mem = persmemFreeListPopFirst(depth);
+    if (mem)
+        return mem;
+
+    /* Allocate from the buddy bitmap. */
+    return persmemBuddyAlloc(depth);
 }
 
 void pmfree(PERSMEM *pm, void *mem)
 {
+    /* Free the block from the buddy bitmap. */
+    unsigned depth = persmemBuddyFree(mem);
+
+    /* Add it to the free list. */
+    persmemFreeListInsert(mem, depth);
 }
 
 void *pmcalloc(PERSMEM *pm, size_t nmemb, size_t size)
 {
-    return NULL;
+    size_t allocSize = nmemb * size;
+    void *mem = pmmalloc(pm, allocSize);
+    memset(mem, 0, allocSize);
 }
 
 void *pmrealloc(PERSMEM *pm, void *mem, size_t size)
 {
-    return NULL;
+    size_t  oldSize;
+    size_t  newSize;
+    size_t  copySize;
+    void   *newMem;
+
+    /* Is this just an alloc rather than a realloc? */
+    if (!mem)
+        return pmmalloc(pm, size);
+
+    /* How big is the old memory block? */
+    unsigned oldDepth = persmemBuddyGetDepth(mem);
+
+    /* What size do we need to allocate? */
+    unsigned newDepth = persmemFitToDepth(size);
+
+    /* If it still fits in the same block size just leave it alone. */
+    if (oldDepth == newDepth)
+        return mem;
+
+    /* Allocate the new block and copy the old data across. */
+    oldSize = ((size_t)1) << oldDepth;
+    newSize = ((size_t)1) << newDepth;
+    copySize = min(oldSize, newSize);
+    newMem = pmmalloc(pm, newSize);
+    memcpy(newMem, mem, copySize);
+
+    /* Free the old block. */
+    pmfree(pm, mem);
+
+    return newMem;
 }

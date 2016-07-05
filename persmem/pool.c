@@ -1,4 +1,8 @@
+#include <unistd.h>
+#include <string.h>
+
 #include "persmem_internal.h"
+
 
 int persmemCreateNewFile(int fd)
 {
@@ -10,7 +14,7 @@ int persmemCreateNewFile(int fd)
     header.version_minor = PERSMEM_FORMAT_VERSION_MINOR;
     header.depth = PERSMEM_FORMAT_INITIAL_DEPTH;
     
-    if (write(fd, header, sizeof(header)) < 0)
+    if (write(fd, &header, sizeof(header)) < 0)
         return -1;
     
     if (ftruncate(fd, PERSMEM_FORMAT_INITIAL_SIZE) < 0)

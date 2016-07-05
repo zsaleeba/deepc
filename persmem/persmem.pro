@@ -12,7 +12,9 @@ CONFIG += staticlib
 
 SOURCES += persmem.c \
     memsize.c \
-    pool.c
+    pool.c \
+    buddybitmap.c \
+    freelist.c
 
 HEADERS += persmem.h \
     persmem_internal.h

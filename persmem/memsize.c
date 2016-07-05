@@ -1,14 +1,16 @@
 #include "persmem_internal.h"
 
 
+
 /*
- * NAME:        persmemRoundUpPowerOf2
- * ACTION:      Rounds a value up to the nearest power of 2.
+ * NAME:        persmemFitToDepth
+ * ACTION:      Rounds a value up to the nearest power of 2 and returns the 
+ *              "depth" - ie. the power part.
  * PARAMETERS:  size_t i - the value to round.
  * RETURNS:     The nearest power of two greater than or equal to the value of i.
  */
 
-size_t persmemRoundUpPowerOf2(size_t i)
+unsigned persmemFitToDepth(size_t i)
 {
     /* Find the most significant set bit. */
     int b = 0;
@@ -23,7 +25,20 @@ size_t persmemRoundUpPowerOf2(size_t i)
 
     /* Return the nearest power of two. */
     if ((((size_t)1)<<b) == i)
-        return i;
+        return b;
     else
-        return (((size_t)1)<<(b+1));
+        return b+1;
+}
+
+
+/*
+ * NAME:        persmemRoundUpPowerOf2
+ * ACTION:      Rounds a value up to the nearest power of 2.
+ * PARAMETERS:  size_t i - the value to round.
+ * RETURNS:     The nearest power of two greater than or equal to the value of i.
+ */
+
+size_t persmemRoundUpPowerOf2(size_t i)
+{
+    return 1 << persmemFitToDepth(i);
 }
