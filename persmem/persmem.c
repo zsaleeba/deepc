@@ -30,11 +30,11 @@ void *persmem_default_pool = NULL;
  *                  "r" - read only, don't create.
  *                  "r+" - read/write, don't create.
  *                  "w+" - read/write, create if it doesn't exist.
- * RETURNS:     PERSMEM * - pointer to a newly allocated handle. This is freed
+ * RETURNS:     PersMem * - pointer to a newly allocated handle. This is freed
  *                  when pmclose() is called with it. NULL on error.
  */
 
-PERSMEM *pmopen(const char *path, const char *mode)
+PersMem *pmopen(const char *path, const char *mode)
 {
     bool readOnly = false;
     bool createFile = false;
@@ -43,7 +43,7 @@ PERSMEM *pmopen(const char *path, const char *mode)
     size_t fileSize;
     void *mapAddr;
     persmemFileHeader *header;
-    PERSMEM *handle;
+    PersMem *handle;
     int protFlags;
     long pageSize;
 
@@ -171,11 +171,11 @@ PERSMEM *pmopen(const char *path, const char *mode)
  * NAME:        pmclose
  * ACTION:      Closes a persistent memory pool and frees resources.
  *              Ensures that the pool is written to the backing file.
- * PARAMETERS:  PERSMEM *pm - the pool to close and free.
+ * PARAMETERS:  PersMem *pm - the pool to close and free.
  * RETURNS:     0 on success, -1 on failure and errno is set.
  */
 
-int pmclose(PERSMEM *pm)
+int pmclose(PersMem *pm)
 {
     if (munmap(pm->mapAddr, pm->mapSize) < 0)
         return -1;
@@ -187,7 +187,7 @@ int pmclose(PERSMEM *pm)
 
 
 /* For use when handling multiple persistent memory files at the same time. */
-void *pmmalloc(PERSMEM *pm, size_t size)
+void *pmmalloc(PersMem *pm, size_t size)
 {
     void *mem;
 
@@ -203,7 +203,7 @@ void *pmmalloc(PERSMEM *pm, size_t size)
     return persmemBuddyAlloc(depth);
 }
 
-void pmfree(PERSMEM *pm, void *mem)
+void pmfree(PersMem *pm, void *mem)
 {
     /* Free the block from the buddy bitmap. */
     unsigned depth = persmemBuddyFree(mem);
@@ -212,14 +212,14 @@ void pmfree(PERSMEM *pm, void *mem)
     persmemFreeListInsert(mem, depth);
 }
 
-void *pmcalloc(PERSMEM *pm, size_t nmemb, size_t size)
+void *pmcalloc(PersMem *pm, size_t nmemb, size_t size)
 {
     size_t allocSize = nmemb * size;
     void *mem = pmmalloc(pm, allocSize);
     memset(mem, 0, allocSize);
 }
 
-void *pmrealloc(PERSMEM *pm, void *mem, size_t size)
+void *pmrealloc(PersMem *pm, void *mem, size_t size)
 {
     size_t  oldSize;
     size_t  newSize;

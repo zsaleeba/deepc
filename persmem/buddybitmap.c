@@ -1,18 +1,14 @@
+#include <stdio.h>
+
 #include "persmem.h"
+#include "persmem_internal.h"
+
 
 /* Size constants. */
 #define BITS_PER_BYTE 8
 #define BLOCK_STATUS_BITS 2
 #define BLOCK_STATUS_MASK ((1 << BLOCK_STATUS_BITS) - 1)
-#define BLOCK_STATUS_PER_UINT32 (sizeof(uint32_t) / BITS_PER_BYTE / BLOCK_STATUS_BITS)
-
-
-/* The buddy bitmap is allocated from an array of uint32_t.  */
-typedef struct
-{
-    unsigned maxLevel;
-    uint32_t *bitmap;
-} buddyMap;
+#define BLOCK_STATUS_PER_UINT32 (sizeof(uint32_t) * BITS_PER_BYTE / BLOCK_STATUS_BITS)
 
 
 /*
@@ -33,7 +29,7 @@ enum buddyBlockStatus
 
 
 /* Keep these names in sync with enum buddyBlockStatus. */
-static const char *buddyBlockStatusName =
+static const char *buddyBlockStatusName[4] =
 {
     "unknown",
     "free",
@@ -111,19 +107,19 @@ static const char *buddyBlockStatusName =
 
 
 /*
- * NAME:        pmBuddyBitmapGet
+ * NAME:        buddyBitmapGet
  * ACTION:      Get the status of a memory block from the buddy bitmap.
- * PARAMETERS:  buddyMap *map  - the buddy bitmap to use.
+ * PARAMETERS:  pmBuddyMap *map  - the buddy bitmap to use.
  *              unsigned level - the level in the bitmap.
  *                               0 = the lowest level, ie. the smallest block size
  *              size_t index   - the index of the block in the set of all blocks of that level.
  * RETURNS:     enum buddyBlockStatus - the status of the block. free / allocated / split.
  */
 
-static enum buddyBlockStatus pmBuddyBitmapGet(buddyMap *map, unsigned level, size_t index)
+static enum buddyBlockStatus buddyBitmapGet(pmBuddyMap *map, unsigned level, size_t index)
 {
     size_t mapStart = (1 << level) - 1;
-    size_t mapStepped = offset << (level + 1);
+    size_t mapStepped = index << (level + 1);
     size_t mapOffset = mapStart + mapStepped;
     size_t wordOffset = mapOffset / BLOCK_STATUS_PER_UINT32;
     size_t bitOffset = (mapOffset % BLOCK_STATUS_PER_UINT32) * BLOCK_STATUS_BITS;
@@ -133,16 +129,16 @@ static enum buddyBlockStatus pmBuddyBitmapGet(buddyMap *map, unsigned level, siz
 
 
 /*
- * NAME:        pmBuddyBitmapSet
+ * NAME:        buddyBitmapSet
  * ACTION:      Set the status of a memory block in the buddy bitmap.
- * PARAMETERS:  buddyMap *map  - the buddy bitmap to use.
+ * PARAMETERS:  pmBuddyMap *map  - the buddy bitmap to use.
  *              unsigned level - the level in the bitmap.
  *                               0 = the lowest level, ie. the smallest block size
  *              size_t index   - the index of the block in the set of all blocks of that level.
  *              enum buddyBlockStatus - the status of the block. free / allocated / split.
  */
 
-static void pmBuddyBitmapSet(buddyMap *map, unsigned level, size_t offset, enum buddyBlockStatus newStatus)
+static void buddyBitmapSet(pmBuddyMap *map, unsigned level, size_t offset, enum buddyBlockStatus newStatus)
 {
     size_t mapStart = (1 << level) - 1;
     size_t mapStepped = offset << (level + 1);
@@ -156,19 +152,19 @@ static void pmBuddyBitmapSet(buddyMap *map, unsigned level, size_t offset, enum 
 
 
 /*
- * NAME:        pmBuddyBitmapSetFrom
+ * NAME:        buddyBitmapSetFrom
  * ACTION:      Set the status of a memory block from a required status to a new status.
- * PARAMETERS:  buddyMap *map  - the buddy bitmap to use.
+ * PARAMETERS:  pmBuddyMap *map  - the buddy bitmap to use.
  *              unsigned level - the level in the bitmap.
  *                               0 = the lowest level, ie. the smallest block size
  *              size_t index   - the index of the block in the set of all blocks of that level.
  *              enum buddyBlockStatus - the status of the block. free / allocated / split.
  */
 
-static void pmBuddyBitmapSetFrom(buddyMap *map, unsigned level, size_t offset, enum buddyBlockStatus fromStatus, enum buddyBlockStatus newStatus)
+static void buddyBitmapSetFrom(pmBuddyMap *map, unsigned level, size_t index, enum buddyBlockStatus fromStatus, enum buddyBlockStatus newStatus)
 {
     /* Check that the block status is correct. */
-    enum buddyBlockStatus currentStatus = pmBuddyBitmapGet(map, level, index);
+    enum buddyBlockStatus currentStatus = buddyBitmapGet(map, level, index);
     if (currentStatus != fromStatus)
     {
         fprintf(stderr, "persistent memory error: can't change from %s to %s since it was %s instead\n", 
@@ -180,14 +176,14 @@ static void pmBuddyBitmapSetFrom(buddyMap *map, unsigned level, size_t offset, e
     }
     
     /* Set it. */
-    pmBuddyBitmapSetFrom(map, level, index, newStatus);
+    buddyBitmapSet(map, level, index, newStatus);
 }
 
 
 /*
- * NAME:        pmBuddySplit
+ * NAME:        persmemBuddySplit
  * ACTION:      Split a block of memory at the given level.
- * PARAMETERS:  buddyMap *map  - the buddy bitmap to use.
+ * PARAMETERS:  pmBuddyMap *map  - the buddy bitmap to use.
  *              unsigned allocLevel - the power of two level of the space
  *                  to allocate starting from 0 = 16 bytes, 
  *                  1 = 32 bytes, 2 = 64 bytes etc.
@@ -197,20 +193,21 @@ static void pmBuddyBitmapSetFrom(buddyMap *map, unsigned level, size_t offset, e
  *              enum buddyBlockStatus - the status of the block. free / allocated / split.
  */
 
-static void *pmBuddySplit(buddyMap *map, unsigned level, size_t index)
+void persmemBuddySplit(pmBuddyMap *map, unsigned level, size_t index)
 {
     /* Split the block in two. */
     size_t childIndex = index << 1;
-    pmBuddyBitmapSetFrom(map, level, index, BBSFree, BBSSplit);
-    pmBuddyBitmapSetFrom(map, level-1, childIndex, BBSUnknown, BBSFree);
-    pmBuddyBitmapSetFrom(map, level-1, childIndex+1, BBSUnknown, BBSFree);
+    buddyBitmapSetFrom(map, level, index, BBSFree, BBSSplit);
+    buddyBitmapSetFrom(map, level-1, childIndex, BBSUnknown, BBSFree);
+    buddyBitmapSetFrom(map, level-1, childIndex+1, BBSUnknown, BBSFree);
 }
 
 
+#if 0
 /*
- * NAME:        pmBuddyAllocLevel
+ * NAME:        buddyAllocLevel
  * ACTION:      Split a block of memory at the given level.
- * PARAMETERS:  buddyMap *map  - the buddy bitmap to use.
+ * PARAMETERS:  pmBuddyMap *map  - the buddy bitmap to use.
  *              unsigned allocLevel - the power of two level of the space
  *                  to allocate starting from 0 = 16 bytes, 
  *                  1 = 32 bytes, 2 = 64 bytes etc.
@@ -220,39 +217,40 @@ static void *pmBuddySplit(buddyMap *map, unsigned level, size_t index)
  *              enum buddyBlockStatus - the status of the block. free / allocated / split.
  */
 
-static void *pmBuddyAllocLevel(buddyMap *map, unsigned level, size_t index)
+static void *buddyAllocLevel(pmBuddyMap *map, unsigned level, size_t index)
 {
-    
+    return NULL;
 }
 
 
 /*
- * NAME:        pmBuddyAlloc
+ * NAME:        persmemBuddyAlloc
  * ACTION:      Allocates memory from the buddy allocator.
  *              Will split blocks as necessary to create a block of
  *              the correct size.
- * PARAMETERS:  buddyMap *map - the buddy bitmap to allocate in.
+ * PARAMETERS:  pmBuddyMap *map - the buddy bitmap to allocate in.
  *              unsigned level - the power of two level of the space
  *                  to allocate starting from 0 = 16 bytes, 
  *                  1 = 32 bytes, 2 = 64 bytes etc.
  * RETURNS:     A pointer to the allocated memory or NULL if out of memory.
  */
 
-void *pmBuddyAlloc(buddyMap *map, unsigned level)
+void *persmemBuddyAlloc(pmBuddyMap *map, unsigned level)
 {
     return pmBuddyAllocLevel(map, level, 0);
 }
 
 
 /*
- * NAME:        pmBuddyFree
+ * NAME:        persmemBuddyFree
  * ACTION:      Frees memory from the buddy allocator.
  *              Will coalesce buddy blocks if necessary.
- * PARAMETERS:  buddyMap *map - the buddy bitmap to free in.
+ * PARAMETERS:  pmBuddyMap *map - the buddy bitmap to free in.
  *              void *mem - the memory to free.
  */
 
-void pmBuddyFree(buddyMap *map, void *mem)
+void persmemBuddyFree(pmBuddyMap *map, void *mem)
 {
 }
 
+#endif
