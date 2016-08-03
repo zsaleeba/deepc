@@ -14,7 +14,8 @@ SOURCES += persmem.c \
     memsize.c \
     pool.c \
     buddybitmap.c \
-    freelist.c
+    freelist.c \
+    alloc.c
 
 HEADERS += persmem.h \
     persmem_internal.h

@@ -27,9 +27,9 @@
   <returns>The new root ater rotation</returns>
   <remarks>For jsw_rbtree.c internal use only</remarks>
 */
-static persmemFreeListNode *singleRotate(persmemFreeListNode *root, bool dir)
+static pmFreeListNode *singleRotate(pmFreeListNode *root, bool dir)
 {
-    persmemFreeListNode *save = root->link[!dir];
+    pmFreeListNode *save = root->link[!dir];
 
     root->link[!dir] = save->link[dir];
     save->link[dir] = root;
@@ -51,7 +51,7 @@ static persmemFreeListNode *singleRotate(persmemFreeListNode *root, bool dir)
   <returns>The new root after rotation</returns>
   <remarks>For jsw_rbtree.c internal use only</remarks>
 */
-static persmemFreeListNode *doubleRotate(persmemFreeListNode *root, bool dir)
+static pmFreeListNode *doubleRotate(pmFreeListNode *root, bool dir)
 {
     root->link[!dir] = doubleRotate(root->link[!dir], !dir);
 
@@ -73,7 +73,7 @@ static persmemFreeListNode *doubleRotate(persmemFreeListNode *root, bool dir)
   must be freed using C's free function
   </remarks>
 */
-static void initNode(persmemFreeListNode *node)
+static void initNode(pmFreeListNode *node)
 {
     node->isRed = true;
     node->link[0] = NULL;
@@ -81,14 +81,14 @@ static void initNode(persmemFreeListNode *node)
 }
 
 
-void persmemFreeListInit(persmemFreeList *fl)
+void pmFreeListInit(pmFreeList *fl)
 {
     fl->root = NULL;
     fl->size = 0;
 }
 
 
-void persmemFreeListInsert(persmemFreeList *fl, void *mem)
+void pmFreeListInsert(pmFreeList *fl, void *mem)
 {
     if (fl->root == NULL)
     {
@@ -98,9 +98,9 @@ void persmemFreeListInsert(persmemFreeList *fl, void *mem)
     }
     else 
     {
-        persmemFreeListNode head = {0}; /* False tree root. */
-        persmemFreeListNode *g, *t;     /* Grandparent & parent. */
-        persmemFreeListNode *p, *q;     /* Iterator & parent. */
+        pmFreeListNode head = {0}; /* False tree root. */
+        pmFreeListNode *g, *t;     /* Grandparent & parent. */
+        pmFreeListNode *p, *q;     /* Iterator & parent. */
         int dir = 0, last = 0;
 
         /* Set up our helpers. */
@@ -169,11 +169,11 @@ void persmemFreeListInsert(persmemFreeList *fl, void *mem)
 }
 
 
-void persmemFreeListRemove(persmemFreeList *fl, void *mem)
+void pmFreeListRemove(pmFreeList *fl, void *mem)
 {
-    persmemFreeListNode head = {0}; /* False tree root. */
-    persmemFreeListNode *q, *p, *g; /* Helpers. */
-    persmemFreeListNode *f = NULL;  /* Found item. */
+    pmFreeListNode head = {0}; /* False tree root. */
+    pmFreeListNode *q, *p, *g; /* Helpers. */
+    pmFreeListNode *f = NULL;  /* Found item. */
     bool dir = true;
 
     /* Can't remove from an empty tree. */
@@ -211,7 +211,7 @@ void persmemFreeListRemove(persmemFreeList *fl, void *mem)
             }
             else if (!IS_RED(q->link[!dir]))
             {
-                persmemFreeListNode *s = p->link[!last];
+                pmFreeListNode *s = p->link[!last];
 
                 if (s != NULL) 
                 {
@@ -260,9 +260,9 @@ void persmemFreeListRemove(persmemFreeList *fl, void *mem)
 }
 
 
-void *persmemFreeListRemoveFirst(persmemFreeList *fl)
+void *pmFreeListRemoveFirst(pmFreeList *fl)
 {
-    persmemFreeListNode *first = fl->root;
+    pmFreeListNode *first = fl->root;
 
     /* Free list is empty. */
     if (first == NULL)
@@ -275,6 +275,6 @@ void *persmemFreeListRemoveFirst(persmemFreeList *fl)
     }
 
     /* Remove it. */
-    persmemFreeListRemove(fl, (void *)first);
+    pmFreeListRemove(fl, (void *)first);
     return (void *)first;
 }

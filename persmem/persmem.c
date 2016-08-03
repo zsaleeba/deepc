@@ -6,6 +6,9 @@
 #include <stdbool.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <stdint.h>
+#include <stddef.h>
+#include <stdint.h>
 
 #include "persmem.h"
 #include "persmem_internal.h"
@@ -26,65 +29,58 @@ void *persmem_default_pool = NULL;
  *              the same parameters as malloc() / free().
  *              When finished, close the pool with pmclose().
  * PARAMETERS:  const char *path - path to the file to open.
- *              const char *mode - open mode, similar to fopen().
- *                  "r" - read only, don't create.
- *                  "r+" - read/write, don't create.
- *                  "w+" - read/write, create if it doesn't exist.
+ *              bool writable - true if writable.
+ *              bool createIfMissing - create the file if it doesn't exist.
+ *              size_t masterStructSize - the size of the user structure to
+ *                  use as a master reference to other data in the
+ *                  persistent store.
  * RETURNS:     PersMem * - pointer to a newly allocated handle. This is freed
  *                  when pmclose() is called with it. NULL on error.
  */
 
-PersMem *pmopen(const char *path, const char *mode)
+PersMem *pmopen(const char *path, bool writable, bool createIfMissing, size_t masterStructSize)
 {
-    bool readOnly = false;
-    bool createFile = false;
     int openFlags;
     struct stat fileInfo;
     size_t fileSize;
-    void *mapAddr;
-    persmemFileHeader *header;
-    PersMem *handle;
-    int protFlags;
-    long pageSize;
+    persmemControl pc;
+    PersMem pm;
 
     /* Open the file. */
-    if (strcmp(mode, "r") == 0)
+    if (writable)
     {
-        openFlags = O_RDONLY;
-        readOnly = true;
-    }
-    else if (strcmp(mode, "r+") == 0 || strcmp(mode, "w") == 0)
-    {
+        pm.readOnly = false;
         openFlags = O_RDWR;
-    }
-    else if (strcmp(mode, "w+") == 0 || strcmp(mode, "a") == 0 || strcmp(mode, "a+") == 0)
-    {
-        openFlags = O_CREAT | O_RDWR;
-        createFile = true;
     }
     else
     {
-        errno = EINVAL;
-        return NULL;
+        pm.readOnly = true;
+        openFlags = O_RDONLY;
     }
 
+    if (createIfMissing)
+    {
+        openFlags |= O_CREAT;
+    }
+    
     int fd = open(path, openFlags);
     if (fd < 0)
         return NULL;
 
-    /* Find the file size. */
+    pm.fd = fd;
+
+    /* Check the file size. */
     if (fstat(fd, &fileInfo) < 0)
         return NULL;
 
     fileSize = fileInfo.st_size;
-
-    /* Check the file size. */
-    if (fileSize < sizeof(persmemFileHeader))
+    
+    if (fileSize < sizeof(persmemControl))
     {
-        if (createFile)
+        if (createIfMissing)
         {
-            /* Apparently we just created the file so we'd better write a header. */
-            if (persmemCreateNewFile(fd) < 0)
+            /* Apparently we just created the file so we'd better create a new memory pool. */
+            if (!persmemPoolInit(&pm, PERSMEM_INITIAL_LEVEL, masterStructSize))
                 return NULL;
         }
         else
@@ -94,76 +90,59 @@ PersMem *pmopen(const char *path, const char *mode)
             return NULL;
         }
     }
-    else if (!readOnly)
+    else
     {
-        /* It's an existing file. Increase the size to our full pool space. */
-        if (fileSize < PERSMEM_FORMAT_INITIAL_SIZE)
-            fileSize = PERSMEM_FORMAT_INITIAL_SIZE;
-
-        /* Round the file size to the next power of two. */
-        fileSize = persmemRoundUpPowerOf2(fileSize);
-        if (ftruncate(fd, fileSize) < 0)
+        /* Try to use this file. */
+        if (writable)
+        {
+            /* It's an existing file. Increase the size to our full pool space. */
+            if (fileSize < PERSMEM_LEVEL_BLOCK_BYTES(PERSMEM_INITIAL_LEVEL))
+            {
+                fileSize = PERSMEM_LEVEL_BLOCK_BYTES(PERSMEM_INITIAL_LEVEL);
+            }
+    
+            /* Round the file size to the next power of two. */
+            fileSize = persmemRoundUpPowerOf2(fileSize);
+            if (ftruncate(fd, fileSize) < 0)
+                return NULL;
+        }
+    
+        /* Read the file header in. */
+        if (read(fd, &pc, sizeof(pc)) != sizeof(pc))
+        {
+            /* No valid header - just reinitialise. */
+            if (!persmemPoolInit(&pm, PERSMEM_INITIAL_LEVEL, masterStructSize))
+                return NULL;
+        }
+        else
+        {
+            /* Check the file magic. */
+            if (memcmp(pc.magic, PERSMEM_MAGIC, sizeof(pc.magic)) != 0 ||
+                    pc.version_major != PERSMEM_FORMAT_VERSION_MAJOR ||
+                    pc.version_minor != PERSMEM_FORMAT_VERSION_MINOR)
+            {
+                errno = EILSEQ;
+                return NULL;
+            }
+        }
+        
+        /* Go back to the start of the file. */
+        if (lseek(fd, SEEK_SET, 0) < 0)
             return NULL;
+        
+        /* Map it to the correct address. */
+        if (!persmemMapFile(pm.fd, pm.readOnly, pc.mapAddr, pc.mapSize))
+            return false;
     }
 
-    /* Find the system's memory page size. */
-    pageSize = sysconf(_SC_PAGE_SIZE);
-    if (pageSize < 0)
-    {
-        pageSize = 32768;
-    }
-
-    /* Map the file header in. */
-    protFlags = PROT_READ;
-    if (!readOnly)
-    {
-        protFlags |= PROT_WRITE;
-    }
-
-    mapAddr = mmap(NULL, fileSize, protFlags, MAP_SHARED, fd, 0);
-    if (mapAddr == MAP_FAILED)
+    /* Create the handle. */
+    PersMem *pmh = calloc(sizeof(PersMem), 1);
+    if (pmh == NULL)
         return NULL;
-
-    /* Check the file magic. */
-    header = (persmemFileHeader *)mapAddr;
-    if (memcmp(header->magic, PERSMEM_MAGIC, sizeof(header->magic)) != 0 || 
-            header->version_major != PERSMEM_FORMAT_VERSION_MAJOR ||
-            header->version_minor != PERSMEM_FORMAT_VERSION_MINOR)
-    {
-        errno = EILSEQ;
-        return NULL;
-    }
-
-    /* Remap it to the correct address. */
-    void *mapAt = header->mapAddr;
-#ifdef MREMAP_FIXED
-    mapAddr = mremap(mapAddr, pageSize, fileSize, MREMAP_FIXED, mapAt);
-    if (mapAddr == MAP_FAILED)
-        return NULL;
-#else
-    if (munmap(mapAddr, fileSize) < 0)
-        return NULL;
-
-    mapAddr = mmap(mapAt, fileSize, protFlags, MAP_SHARED | MAP_FIXED, fd, 0);
-    if (mapAddr == MAP_FAILED)
-        return NULL;
-#endif
-
-    /* Construct the handle. */
-    handle = calloc(1, sizeof(PERSMEM));
-    if (!handle)
-    {
-        errno = ENOMEM;
-        return NULL;
-    }
-
-    header = (persmemFileHeader *)mapAddr;
-    handle->mapAddr = mapAddr;
-    handle->mapSize = fileSize;
-    handle->readOnly = readOnly;
-    handle->startElement = header->startElement;
-
-    return handle;
+    
+    memcpy(pmh, &pm, sizeof(PersMem));
+    
+    return pmh;
 }
 
 
@@ -177,7 +156,7 @@ PersMem *pmopen(const char *path, const char *mode)
 
 int pmclose(PersMem *pm)
 {
-    if (munmap(pm->mapAddr, pm->mapSize) < 0)
+    if (munmap(pm->c, pm->c->mapSize) < 0)
         return -1;
 
     free(pm);
@@ -190,34 +169,57 @@ int pmclose(PersMem *pm)
 void *pmmalloc(PersMem *pm, size_t size)
 {
     void *mem;
+    unsigned allocLevel;
 
-    /* What size do we need to allocate? */
-    unsigned depth = persmemFitToDepth(size);
-
-    /* Is there a block of this size in the free list? */
-    mem = persmemFreeListPopFirst(depth);
+    /* Try to allocate it from the current free lists. */
+    unsigned needLevel = persmemFitToDepth(size);
+    mem = persmemAllocBlock(pm, needLevel);
     if (mem)
         return mem;
 
-    /* Allocate from the buddy bitmap. */
-    return persmemBuddyAlloc(depth);
+    /* It's not possible to allocate from the current store. Increase the size of the pool. */
+    if (needLevel >= pm->c->depth)
+    {
+        /*
+         * It's a big new allocation.
+         * We need enough room for the existing data + the new buddy bitmap + the new allocation. 
+         */
+        allocLevel = needLevel + 2; 
+    }
+    else
+    {
+        /* It's a smaller allocation. Just double the pool size. */
+        allocLevel = pm->c->depth + 1;
+    }
+        
+    persmemPoolExpand(pm, allocLevel);
+
+    /* Now try again to allocate it. */
+    return persmemAllocBlock(pm, allocLevel);
 }
+
 
 void pmfree(PersMem *pm, void *mem)
 {
     /* Free the block from the buddy bitmap. */
-    unsigned depth = persmemBuddyFree(mem);
+    size_t index = mem - pm->c->mapAddr;
+    unsigned level = persmemBuddyBitmapFindLevel(pm->c->buddyMap, index);
+    persmemBuddyBitmapSet(pm->c->buddyMap, level, index, false);
 
     /* Add it to the free list. */
-    persmemFreeListInsert(mem, depth);
+    persmemFreeListInsert(&pm->c->freeList[level], mem);
 }
+
 
 void *pmcalloc(PersMem *pm, size_t nmemb, size_t size)
 {
     size_t allocSize = nmemb * size;
     void *mem = pmmalloc(pm, allocSize);
     memset(mem, 0, allocSize);
+
+    return mem;
 }
+
 
 void *pmrealloc(PersMem *pm, void *mem, size_t size)
 {
@@ -231,24 +233,49 @@ void *pmrealloc(PersMem *pm, void *mem, size_t size)
         return pmmalloc(pm, size);
 
     /* How big is the old memory block? */
-    unsigned oldDepth = persmemBuddyGetDepth(mem);
+    size_t index = mem - pm->c->mapAddr;
+    unsigned oldLevel = persmemBuddyBitmapFindLevel(pm->c->buddyMap, index);
 
     /* What size do we need to allocate? */
-    unsigned newDepth = persmemFitToDepth(size);
+    unsigned newLevel = persmemFitToDepth(size);
 
     /* If it still fits in the same block size just leave it alone. */
-    if (oldDepth == newDepth)
+    if (oldLevel == newLevel)
         return mem;
 
-    /* Allocate the new block and copy the old data across. */
-    oldSize = ((size_t)1) << oldDepth;
-    newSize = ((size_t)1) << newDepth;
-    copySize = min(oldSize, newSize);
-    newMem = pmmalloc(pm, newSize);
-    memcpy(newMem, mem, copySize);
+    if (newLevel > oldLevel)
+    {
+        /* Increasing the allocation - locate the new block and copy the old data across. */
+        oldSize = ((size_t)1) << oldLevel;
+        newSize = ((size_t)1) << newLevel;
+        copySize = min(oldSize, newSize);
+        newMem = pmmalloc(pm, newSize);
+        memcpy(newMem, mem, copySize);
 
-    /* Free the old block. */
-    pmfree(pm, mem);
+        /* Free the old block. */
+        pmfree(pm, mem);
 
-    return newMem;
+        return newMem;
+    }
+    else
+    {
+        /* Reducing the allocation - split the block as many times as necessary. */
+        size_t oldLevelOffset = (mem - pm->c->mapAddr) >> (oldLevel + PERSMEM_INITIAL_LEVEL);
+        size_t newLevelOffset = (mem - pm->c->mapAddr) >> (newLevel + PERSMEM_INITIAL_LEVEL);;
+
+        /* Mark it as unallocated in the buddy bitmap at the old level. */
+        persmemBuddyBitmapSet(pm->c->buddyMap, oldLevel, oldLevelOffset, false);
+
+        /* Split off and free the end of the block as many times as necessary to reach the new size. */
+        for (int level = oldLevel-1; level >= (int)newLevel; level--)
+        {
+            /* Release a block at this level. */
+            persmemFreeListInsert(&pm->c->freeList[level], mem + PERSMEM_LEVEL_BLOCK_BYTES(level));
+        }
+
+        /* Mark it as allocated in the buddy bitmap at the new level. */
+        persmemBuddyBitmapSet(pm->c->buddyMap, oldLevel, newLevelOffset, true);
+
+        return mem;
+    }
 }

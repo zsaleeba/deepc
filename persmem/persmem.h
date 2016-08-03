@@ -3,13 +3,25 @@
 
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 
 /* Opaque structure for the persistent memory handle. */
-typedef struct _PersMem PersMem;
+typedef struct _persmemControl persmemControl;
+
+/* Persistent memory handle info. */
+typedef struct
+{
+    persmemControl *c;
+    int             fd;
+    void           *masterStruct;   /* The user's master structure which points to the rest of their storage. */
+    bool            readOnly;       /* True if the file is open read only. */
+    bool            wasCreated;     /* Will be set to true if there was no persistent store file so we're starting from scratch. */
+} PersMem;
+
 
 /* Open or create a persistency file. */
-PersMem *pmopen(const char *path, const char *mode);
+PersMem *pmopen(const char *path, bool writable, bool createIfMissing, size_t masterStructSize);
 int pmclose(PersMem *pm);
 
 /* Standard malloc style interface. To use these do persmen_default_pool = pmopen(const char *path); */
