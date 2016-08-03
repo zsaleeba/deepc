@@ -39,32 +39,32 @@ void *persmemAllocBlockFromFreeList(PersMem *pm, unsigned needLevel)
 
 
 /*
- * NAME:        persmemAllocInBuddyMap
+ * NAME:        persmemAllocInAllocMap
  * ACTION:      Mark memory allocated with persmemAllocBlockFromFreeList()
- *              as being allocated in the buddy bitmap. This may be necessary
- *              if a buddy bitmap isn't available when the initial allocation
+ *              as being allocated in the alloc map. This may be necessary
+ *              if a alloc map isn't available when the initial allocation
  *              is done.
  * PARAMETERS:  PersMem *pm - the PersMem to use.
  *              void *mem - the memory which was allocated.
  *              unsigned level - the level it was allocated at.
  */
 
-void persmemAllocMarkInBuddyMap(PersMem *pm, void *mem, unsigned level)
+void persmemAllocMarkInAllocMap(PersMem *pm, void *mem, unsigned level)
 {
-    /* Mark this block as allocated in the buddy bitmap. */
+    /* Mark this block as allocated in the alloc map. */
     size_t index = (mem - pm->c->mapAddr) >> (PERSMEM_MIN_ALLOC_BITSIZE + level);
-    persmemBuddyBitmapSet(pm->c->buddyMap, level, index, true);
+    persmemAllocMapSet(pm->c->allocMap, level, index, true);
 }
 
 
 /*
  * NAME:        persmemAllocBlock
- * ACTION:      Allocate a block of a particular level. Levels in the buddy block
+ * ACTION:      Allocate a block of a particular level. Levels in the alloc block
  *              hierarchy equate to power of two block sizes with the largest blocks
  *              at the top of the hierarchy with the highest level and the smallest
  *              at the bottom with the lowest level.
  *
- *              Splits blocks as necessary. Updates the free lists and buddy bitmap.
+ *              Splits blocks as necessary. Updates the free lists and alloc map.
  * PARAMETERS:  PersMem *pm - the PersMem to use.
  *              unsigned needLevel - the level to allocate at.
  * RETURNS:     void * - a pointer to the allocated block.
@@ -77,8 +77,8 @@ void *persmemAllocBlock(PersMem *pm, unsigned level)
     if (mem == NULL)
         return NULL;
 
-    /* Mark this block as allocated in the buddy bitmap. */
-    persmemAllocMarkInBuddyMap(pm, mem, level);
+    /* Mark this block as allocated in the alloc map. */
+    persmemAllocMarkInAllocMap(pm, mem, level);
 
     return mem;
 }

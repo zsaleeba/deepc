@@ -11,7 +11,7 @@
 
 
 /*
- * The buddy bitmap is a compact store of each memory block's status.
+ * The alloc map is a compact store of each memory block's status.
  * The status can be:
  *     0 - unallocated
  *     1 - allocated
@@ -21,7 +21,7 @@
  * the size of our persistent storage space.
  *
  * Just as the persistent storage space can be split down through a 
- * hierarchy of sizes the buddy bitmap represents the possible statuses
+ * hierarchy of sizes the alloc map represents the possible statuses
  * of each of the possible blocks of all possible sizes. This means that
  * it has a single status for the maximum sized block, two statuses for
  * the two sub-blocks of that block, four for the sizes down, and so on.
@@ -76,16 +76,16 @@
 
 
 /*
- * NAME:        persmemBuddyBitmapGet
- * ACTION:      Get the status of a memory block from the buddy bitmap.
- * PARAMETERS:  pmBuddyMap *map  - the buddy bitmap to use.
+ * NAME:        persmemAllocMapGet
+ * ACTION:      Get the status of a memory block from the alloc map.
+ * PARAMETERS:  pmAllocMap *map  - the alloc map to use.
  *              unsigned level - the level in the bitmap.
  *                               0 = the lowest level, ie. the smallest block size
  *              size_t index   - the index of the block in the set of all blocks of that level.
  * RETURNS:     bool - the status of the block. free / allocated / split.
  */
 
-bool persmemBuddyBitmapGet(pmBuddyMap *map, unsigned level, size_t index)
+bool persmemAllocMapGet(pmAllocMap *map, unsigned level, size_t index)
 {
     size_t mapStart = (1 << level) - 1;
     size_t mapStepped = index << (level + 1);
@@ -98,16 +98,16 @@ bool persmemBuddyBitmapGet(pmBuddyMap *map, unsigned level, size_t index)
 
 
 /*
- * NAME:        persmemBuddyBitmapSet
- * ACTION:      Set the status of a memory block in the buddy bitmap.
- * PARAMETERS:  pmBuddyMap *map  - the buddy bitmap to use.
+ * NAME:        persmemAllocMapSet
+ * ACTION:      Set the status of a memory block in the alloc map.
+ * PARAMETERS:  pmAllocMap *map  - the alloc map to use.
  *              unsigned level - the level in the bitmap.
  *                               0 = the lowest level, ie. the smallest block size
  *              size_t index   - the index of the block in the set of all blocks of that level.
  *              bool           - the status of the block. allocated / unallocated.
  */
 
-void persmemBuddyBitmapSet(pmBuddyMap *map, unsigned level, size_t index, bool allocated)
+void persmemAllocMapSet(pmAllocMap *map, unsigned level, size_t index, bool allocated)
 {
     size_t mapStart = (1 << level) - 1;
     size_t mapStepped = index << (level + 1);
@@ -121,7 +121,7 @@ void persmemBuddyBitmapSet(pmBuddyMap *map, unsigned level, size_t index, bool a
 
 
 /*
- * NAME:        persmemBuddyBitmapFindLevel
+ * NAME:        persmemAllocMapFindLevel
  * ACTION:      Find the level at which the given memory is allocated. The size of the
  *              memory can be inferred from this.
  *
@@ -131,13 +131,13 @@ void persmemBuddyBitmapSet(pmBuddyMap *map, unsigned level, size_t index, bool a
  *              block whch has all zeroes in the addresses below it down to the minimum
  *              block size. We stop when we find one with the "allocated" bit set.
  *
- * PARAMETERS:  pmBuddyMap *map - the buddy bitmap to use.
+ * PARAMETERS:  pmAllocMap *map - the alloc map to use.
  *              size_t offset   - the memory offset from the start to find.
  * RETURNS:     int             - the allocated level if positive. -1 if not allocated.
  *                               0 = the lowest level, ie. the smallest block size
  */
 
-unsigned persmemBuddyBitmapFindLevel(pmBuddyMap *map, size_t offset)
+unsigned persmemAllocMapFindLevel(pmAllocMap *map, size_t offset)
 {
     int level;
 
@@ -147,7 +147,7 @@ unsigned persmemBuddyBitmapFindLevel(pmBuddyMap *map, size_t offset)
 
     for (level = setBit; level >= 0; level--)
     {
-        if (persmemBuddyBitmapGet(map, level, index))
+        if (persmemAllocMapGet(map, level, index))
         {
             /* It was allocated at this level. */
             return level;
@@ -163,14 +163,14 @@ unsigned persmemBuddyBitmapFindLevel(pmBuddyMap *map, size_t offset)
 
 
 /*
- * NAME:        persmemBuddyBitmapGetBlockAllocLevel
- * ACTION:      Get the allocation size level of a buddy bitmap given the pool's size level.
+ * NAME:        persmemAllocMapGetBlockAllocLevel
+ * ACTION:      Get the allocation size level of a alloc map given the pool's size level.
  * PARAMETERS:  unsigned level - the pool's level in the bitmap.
  *                               0 = the lowest level, ie. the smallest block size
- * RETURNS:     unsigned - the block size level of the entire buddy bitmap.
+ * RETURNS:     unsigned - the block size level of the entire alloc map.
  */
 
-unsigned persmemBuddyBitmapGetBlockAllocLevel(unsigned level)
+unsigned persmemAllocMapGetBlockAllocLevel(unsigned level)
 {
     if (level >= 4)
         return level - 4;
@@ -180,96 +180,15 @@ unsigned persmemBuddyBitmapGetBlockAllocLevel(unsigned level)
 
 
 /*
- * NAME:        persmemBuddyBitmapSizeBytes
- * ACTION:      Get the size of a buddy bitmap given its level.
+ * NAME:        persmemAllocMapSizeBytes
+ * ACTION:      Get the size of a alloc map given its level.
  * PARAMETERS:  unsigned level - the level in the bitmap.
  *                               0 = the lowest level, ie. the smallest block size
- * RETURNS:     size_t - the number of bytes used by the buddy bitmap.
+ * RETURNS:     size_t - the number of bytes used by the alloc map.
  */
 
-size_t persmemBuddyBitmapSizeBytes(unsigned level)
+size_t persmemAllocMapSizeBytes(unsigned level)
 {
-    return sizeof(uint32_t) << persmemBuddyBitmapGetBlockAllocLevel(level);
+    return sizeof(uint32_t) << persmemAllocMapGetBlockAllocLevel(level);
 }
 
-
-#if 0
-/*
- * NAME:        buddyBitmapSetFrom
- * ACTION:      Set the status of a memory block from a required status to a new status.
- * PARAMETERS:  pmBuddyMap *map  - the buddy bitmap to use.
- *              unsigned level - the level in the bitmap.
- *                               0 = the lowest level, ie. the smallest block size
- *              size_t index   - the index of the block in the set of all blocks of that level.
- *              bool - the status of the block. free / allocated / split.
- */
-
-static void buddyBitmapSetFrom(pmBuddyMap *map, unsigned level, size_t index, bool fromStatus, bool newStatus)
-{
-    /* Check that the block status is correct. */
-    bool currentStatus = buddyBitmapGet(map, level, index);
-    if (currentStatus != fromStatus)
-    {
-        fprintf(stderr, "persistent memory error: can't change from %s to %s since it was %s instead\n", 
-                buddyBlockStatusName[fromStatus], 
-                buddyBlockStatusName[newStatus], 
-                buddyBlockStatusName[currentStatus]);
-        
-        abort();
-    }
-    
-    /* Set it. */
-    buddyBitmapSet(map, level, index, newStatus);
-}
-
-
-/*
- * NAME:        buddyAllocLevel
- * ACTION:      Split a block of memory at the given level.
- * PARAMETERS:  pmBuddyMap *map  - the buddy bitmap to use.
- *              unsigned allocLevel - the power of two level of the space
- *                  to allocate starting from 0 = 16 bytes, 
- *                  1 = 32 bytes, 2 = 64 bytes etc.
- *              size_t index   - the index of the block in the set of all blocks of that level.
- *              unsigned tryLevel - the level in the bitmap.
- *                               0 = the lowest level, ie. the smallest block size
- *              bool - the status of the block. free / allocated / split.
- */
-
-static void buddyAllocLevel(pmBuddyMap *map, unsigned level, size_t index)
-{
-    buddyBitmapSet(map, level, index, true);
-}
-
-
-/*
- * NAME:        persmemBuddyAlloc
- * ACTION:      Allocates memory from the buddy allocator.
- *              Will split blocks as necessary to create a block of
- *              the correct size.
- * PARAMETERS:  pmBuddyMap *map - the buddy bitmap to allocate in.
- *              unsigned level - the power of two level of the space
- *                  to allocate starting from 0 = 16 bytes, 
- *                  1 = 32 bytes, 2 = 64 bytes etc.
- * RETURNS:     A pointer to the allocated memory or NULL if out of memory.
- */
-
-void *persmemBuddyAlloc(pmBuddyMap *map, unsigned level)
-{
-    return pmBuddyAllocLevel(map, level, 0);
-}
-
-
-/*
- * NAME:        persmemBuddyFree
- * ACTION:      Frees memory from the buddy allocator.
- *              Will coalesce buddy blocks if necessary.
- * PARAMETERS:  pmBuddyMap *map - the buddy bitmap to free in.
- *              void *mem - the memory to free.
- */
-
-void persmemBuddyFree(pmBuddyMap *map, void *mem)
-{
-}
-
-#endif

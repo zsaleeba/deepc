@@ -51,12 +51,12 @@ typedef struct
 } pmFreeList;
 
 
-/* The buddy bitmap is allocated from an array of uint32_t.  */
+/* The alloc map is allocated from an array of uint32_t.  */
 typedef struct
 {
     unsigned maxLevel;
     uint32_t *bitmap;
-} pmBuddyMap;
+} pmAllocMap;
 
 
 /* Control structure. */
@@ -71,7 +71,7 @@ struct _persmemControl
     size_t      mapSize;
     void       *masterStruct;
     pmFreeList  freeList[PERSMEM_MAX_DEPTH];
-    pmBuddyMap *buddyMap;
+    pmAllocMap *allocMap;
 };
 
 
@@ -81,7 +81,7 @@ size_t persmemRoundUpPowerOf2(size_t i);
 
 /* alloc.c - block allocation. */
 void *persmemAllocBlockFromFreeList(PersMem *pm, unsigned needLevel);
-void  persmemAllocMarkInBuddyMap(PersMem *pm, void *mem, unsigned level);
+void  persmemAllocMarkInAllocMap(PersMem *pm, void *mem, unsigned level);
 void *persmemAllocBlock(PersMem *pm, unsigned needLevel);
 
 /* pool.c - memory pool. */
@@ -91,17 +91,14 @@ void   persmemPoolContract(PersMem *pm, unsigned newLevel);
 size_t persmemPoolUsedBytes(PersMem *pm);
 void  *persmemMapFile(int fd, bool readOnly, void *mapAddr, size_t mapSize);
 
-/* Buddy bitmap prototypes. */
-void     persmemBuddyBitmapSet(pmBuddyMap *map, unsigned level, size_t index, bool allocated);
-bool     persmemBuddyBitmapGet(pmBuddyMap *map, unsigned level, size_t index);
-unsigned persmemBuddyBitmapFindLevel(pmBuddyMap *map, size_t index);
-unsigned persmemBuddyBitmapGetBlockAllocLevel(unsigned level);
-size_t   persmemBuddyBitmapSizeBytes(unsigned level);
-//void persmemBuddySplit(pmBuddyMap *map, unsigned level, size_t index);
-//void *persmemBuddyAlloc(pmBuddyMap *map, unsigned level);
-//void persmemBuddyFree(pmBuddyMap *map, void *mem);
+/* allocmap.c - block allocation map. */
+void     persmemAllocMapSet(pmAllocMap *map, unsigned level, size_t index, bool allocated);
+bool     persmemAllocMapGet(pmAllocMap *map, unsigned level, size_t index);
+unsigned persmemAllocMapFindLevel(pmAllocMap *map, size_t index);
+unsigned persmemAllocMapGetBlockAllocLevel(unsigned level);
+size_t   persmemAllocMapSizeBytes(unsigned level);
 
-/* Free list prototypes. */
+/* freelist.c - free list implemented as a red-black tree. */
 void  persmemFreeListInsert(pmFreeList *fl, void *mem);
 void  persmemFreeListRemove(pmFreeList *fl, void *mem);
 void *persmemFreeListRemoveFirst(pmFreeList *fl);

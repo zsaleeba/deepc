@@ -182,7 +182,7 @@ void *pmmalloc(PersMem *pm, size_t size)
     {
         /*
          * It's a big new allocation.
-         * We need enough room for the existing data + the new buddy bitmap + the new allocation. 
+         * We need enough room for the existing data + the new alloc map + the new allocation. 
          */
         allocLevel = needLevel + 2; 
     }
@@ -201,10 +201,10 @@ void *pmmalloc(PersMem *pm, size_t size)
 
 void pmfree(PersMem *pm, void *mem)
 {
-    /* Free the block from the buddy bitmap. */
+    /* Free the block from the alloc map. */
     size_t index = mem - pm->c->mapAddr;
-    unsigned level = persmemBuddyBitmapFindLevel(pm->c->buddyMap, index);
-    persmemBuddyBitmapSet(pm->c->buddyMap, level, index, false);
+    unsigned level = persmemAllocMapFindLevel(pm->c->allocMap, index);
+    persmemAllocMapSet(pm->c->allocMap, level, index, false);
 
     /* Add it to the free list. */
     persmemFreeListInsert(&pm->c->freeList[level], mem);
@@ -234,7 +234,7 @@ void *pmrealloc(PersMem *pm, void *mem, size_t size)
 
     /* How big is the old memory block? */
     size_t index = mem - pm->c->mapAddr;
-    unsigned oldLevel = persmemBuddyBitmapFindLevel(pm->c->buddyMap, index);
+    unsigned oldLevel = persmemAllocMapFindLevel(pm->c->allocMap, index);
 
     /* What size do we need to allocate? */
     unsigned newLevel = persmemFitToDepth(size);
@@ -263,8 +263,8 @@ void *pmrealloc(PersMem *pm, void *mem, size_t size)
         size_t oldLevelOffset = (mem - pm->c->mapAddr) >> (oldLevel + PERSMEM_INITIAL_LEVEL);
         size_t newLevelOffset = (mem - pm->c->mapAddr) >> (newLevel + PERSMEM_INITIAL_LEVEL);;
 
-        /* Mark it as unallocated in the buddy bitmap at the old level. */
-        persmemBuddyBitmapSet(pm->c->buddyMap, oldLevel, oldLevelOffset, false);
+        /* Mark it as unallocated in the alloc map at the old level. */
+        persmemAllocMapSet(pm->c->allocMap, oldLevel, oldLevelOffset, false);
 
         /* Split off and free the end of the block as many times as necessary to reach the new size. */
         for (int level = oldLevel-1; level >= (int)newLevel; level--)
@@ -273,8 +273,8 @@ void *pmrealloc(PersMem *pm, void *mem, size_t size)
             persmemFreeListInsert(&pm->c->freeList[level], mem + PERSMEM_LEVEL_BLOCK_BYTES(level));
         }
 
-        /* Mark it as allocated in the buddy bitmap at the new level. */
-        persmemBuddyBitmapSet(pm->c->buddyMap, oldLevel, newLevelOffset, true);
+        /* Mark it as allocated in the alloc map at the new level. */
+        persmemAllocMapSet(pm->c->allocMap, oldLevel, newLevelOffset, true);
 
         return mem;
     }
