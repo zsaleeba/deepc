@@ -84,3 +84,46 @@ void *persmemAllocBlock(PersMem *pm, unsigned level)
 }
 
 
+/*
+ * NAME:        persmemFreeBlock
+ * ACTION:      Frees a block of memory at a particular level.
+ *              Checks for a free buddy memory block that this freed block
+ *              can be coalesced with. The same operation is then done at
+ *              the next level up so large blocks can be coalesced.
+ * PARAMETERS:  PersMem *pm - the PersMem to use.
+ *              unsigned level - the block's level. The size can be inferred
+ *                  from this.
+ *              size_t offset - the offset at the given level of the block.
+ *                  If the pool was split into blocks of the given level this
+ *                  would be the nth block from the start of the pool.
+ */
+
+void persmemFreeBlock(PersMem *pm, unsigned level, size_t offset)
+{
+    /* Coalesce this block as much as possible. */
+    bool readyToFree = false;
+    while (!readyToFree && level < pm->c->depth - 1)
+    {
+        /* Can we free this block's buddy? */
+        size_t buddyOffset = offset ^ 0x1;
+        void  *buddyMem = PERSMEM_MEM_FROM_LEVEL_OFFSET(pm, level, buddyOffset);
+        
+        if (persmemFreeListFind(&pm->c->freeList[level], buddyMem))
+        {
+            /* Buddy existed. We're coalescing this block so remove it. */
+            persmemFreeListRemove(&pm->c->freeList[level], buddyMem);
+
+            /* Move up a level and try again. */
+            level++;
+        }
+        else
+        {
+            /* Can't coalesce with our buddy. Just move on to free it. */
+            readyToFree = true;
+        }
+    }
+    
+    /* Now free it for real. */
+    void  *mem = PERSMEM_MEM_FROM_LEVEL_OFFSET(pm, level, offset);
+    persmemFreeListInsert(&pm->c->freeList[level], mem);
+}

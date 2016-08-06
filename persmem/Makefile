@@ -5,7 +5,7 @@ PMOBJDIR=  $(OBJDIR)/deepc/persmem
 CFLAGS += -g -W -Wall -Wextra
 
 TARGET	= $(PMOBJDIR)/persmem.a
-SRCS 	= persmem.c alloc.c memsize.c pool.c buddybitmap.c freelist.c
+SRCS 	= alloc.c allocmap.c freelist.c memsize.c persmem.c pool.c
 OBJS    := $(SRCS:%.c=$(PMOBJDIR)/%.o)
 
 all:    $(PMOBJDIR) $(TARGET)

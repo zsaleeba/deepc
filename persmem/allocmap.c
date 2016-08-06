@@ -172,23 +172,8 @@ unsigned persmemAllocMapFindLevel(pmAllocMap *map, size_t offset)
 
 unsigned persmemAllocMapGetBlockAllocLevel(unsigned level)
 {
-    if (level >= 4)
+    if (level >= 6)
         return level - 4;
     else
         return 0;
 }
-
-
-/*
- * NAME:        persmemAllocMapSizeBytes
- * ACTION:      Get the size of a alloc map given its level.
- * PARAMETERS:  unsigned level - the level in the bitmap.
- *                               0 = the lowest level, ie. the smallest block size
- * RETURNS:     size_t - the number of bytes used by the alloc map.
- */
-
-size_t persmemAllocMapSizeBytes(unsigned level)
-{
-    return sizeof(uint32_t) << persmemAllocMapGetBlockAllocLevel(level);
-}
-

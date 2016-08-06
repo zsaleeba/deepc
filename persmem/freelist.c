@@ -16,6 +16,10 @@
 /* Checks the colour of a red black tree node. */
 #define IS_RED(n) ((n) != NULL && (n)->isRed)
 
+/* The two directions from a node. */
+#define LEFT_CHILD 0
+#define RIGHT_CHILD 1
+
 
 /**
   <summary>
@@ -76,19 +80,19 @@ static pmFreeListNode *doubleRotate(pmFreeListNode *root, bool dir)
 static void initNode(pmFreeListNode *node)
 {
     node->isRed = true;
-    node->link[0] = NULL;
-    node->link[1] = NULL;
+    node->link[LEFT_CHILD] = NULL;
+    node->link[RIGHT_CHILD] = NULL;
 }
 
 
-void pmFreeListInit(pmFreeList *fl)
+void persmemFreeListInit(pmFreeList *fl)
 {
     fl->root = NULL;
     fl->size = 0;
 }
 
 
-void pmFreeListInsert(pmFreeList *fl, void *mem)
+void persmemFreeListInsert(pmFreeList *fl, void *mem)
 {
     if (fl->root == NULL)
     {
@@ -98,69 +102,70 @@ void pmFreeListInsert(pmFreeList *fl, void *mem)
     }
     else 
     {
-        pmFreeListNode head = {0}; /* False tree root. */
-        pmFreeListNode *g, *t;     /* Grandparent & parent. */
-        pmFreeListNode *p, *q;     /* Iterator & parent. */
+        pmFreeListNode head = { {NULL, NULL}, 0}; /* False tree root. */
+        pmFreeListNode *grandParent, *parent;     /* Grandparent & parent. */
+        pmFreeListNode *pos, *posParent;     /* Iterator & parent. */
         int dir = 0, last = 0;
 
         /* Set up our helpers. */
-        t = &head;
-        g = p = NULL;
-        q = fl->root;
-        t->link[1] = fl->root;
+        parent = &head;
+        grandParent = NULL;
+        pos = NULL;
+        posParent = fl->root;
+        parent->link[RIGHT_CHILD] = fl->root;
 
         /* Search down the tree for a place to insert. */
-        for ( ; ; ) 
+        while (true)
         {
-            if (q == NULL)
+            if (posParent == NULL)
             {
                 /* Insert a new node at the first null link. */
                 initNode(mem);
-                q = mem;
-                p->link[dir] = q;
+                posParent = mem;
+                pos->link[dir] = posParent;
             }
-            else if (IS_RED(q->link[0]) && IS_RED(q->link[1])) 
+            else if (IS_RED(posParent->link[LEFT_CHILD]) && IS_RED(posParent->link[RIGHT_CHILD])) 
             {
                 /* Simple red violation: color flip. */
-                q->isRed = true;
-                q->link[0]->isRed = false;
-                q->link[1]->isRed = false;
+                posParent->isRed = true;
+                posParent->link[LEFT_CHILD]->isRed = false;
+                posParent->link[RIGHT_CHILD]->isRed = false;
             }
 
-            if (IS_RED(q) && IS_RED(p)) 
+            if (IS_RED(posParent) && IS_RED(pos)) 
             {
                 /* Hard red violation: rotations necessary */
-                bool dir2 = t->link[1] == g;
+                bool dir2 = parent->link[RIGHT_CHILD] == grandParent;
 
-                if (q == p->link[last])
+                if (posParent == pos->link[last])
                 {
-                    t->link[dir2] = singleRotate(g, !last);
+                    parent->link[dir2] = singleRotate(grandParent, !last);
                 }
                 else
                 {
-                    t->link[dir2] = doubleRotate(g, !last);
+                    parent->link[dir2] = doubleRotate(grandParent, !last);
                 }
             }
 
             /* Stop working if we inserted a node. This check also disallows duplicates in the tree. */
-            if (q == mem)
+            if (posParent == mem)
                 break;
 
             last = dir;
-            dir = (void *)q < mem;
+            dir = (void *)posParent < mem;
 
             /* Move the helpers down */
-            if (g != NULL)
+            if (grandParent != NULL)
             {
-                t = g;
+                parent = grandParent;
             }
 
-            g = p, p = q;
-            q = q->link[dir];
+            grandParent = pos, pos = posParent;
+            posParent = posParent->link[dir];
         }
 
         /* Update the root (it may be different). */
-        fl->root = head.link[1];
+        fl->root = head.link[RIGHT_CHILD];
     }
 
     /* Make the root black for simplified logic. */
@@ -169,11 +174,11 @@ void pmFreeListInsert(pmFreeList *fl, void *mem)
 }
 
 
-void pmFreeListRemove(pmFreeList *fl, void *mem)
+void persmemFreeListRemove(pmFreeList *fl, void *mem)
 {
-    pmFreeListNode head = {0}; /* False tree root. */
-    pmFreeListNode *q, *p, *g; /* Helpers. */
-    pmFreeListNode *f = NULL;  /* Found item. */
+    pmFreeListNode head = { {NULL, NULL}, 0 }; /* False tree root. */
+    pmFreeListNode *pos, *parent, *grandParent; /* Helpers. */
+    pmFreeListNode *found = NULL;  /* Found item. */
     bool dir = true;
 
     /* Can't remove from an empty tree. */
@@ -181,60 +186,61 @@ void pmFreeListRemove(pmFreeList *fl, void *mem)
         return;
     
     /* Set up our helpers. */
-    q = &head;
-    g = p = NULL;
-    q->link[1] = fl->root;
+    pos = &head;
+    grandParent = NULL;
+    parent = NULL;
+    pos->link[RIGHT_CHILD] = fl->root;
 
     /* Search and push a red node down to fix red violations as we go. */
-    while (q->link[dir] != NULL)
+    while (pos->link[dir] != NULL)
     {
         bool last = dir;
 
         /* Move the helpers down. */
-        g = p;
-        p = q;
-        q = q->link[dir];
-        dir = (void *)q < mem;
+        grandParent = parent;
+        parent = pos;
+        pos = pos->link[dir];
+        dir = (void *)pos < mem;
 
         /* Save the node with matching data and keep going; we'll do removal tasks at the end. */
-        if (q == mem)
+        if (pos == mem)
         {
-            f = q;
+            found = pos;
         }
 
         /* Push the red node down with rotations and color flips. */
-        if (!IS_RED(q) && !IS_RED(q->link[dir]))
+        if (!IS_RED(pos) && !IS_RED(pos->link[dir]))
         {
-            if (IS_RED(q->link[!dir]))
+            if (IS_RED(pos->link[!dir]))
             {
-                p = p->link[last] = singleRotate(q, dir);
+                parent = parent->link[last] = singleRotate(pos, dir);
             }
-            else if (!IS_RED(q->link[!dir]))
+            else if (!IS_RED(pos->link[!dir]))
             {
-                pmFreeListNode *s = p->link[!last];
+                pmFreeListNode *sibling = parent->link[!last];
 
-                if (s != NULL) 
+                if (sibling != NULL) 
                 {
-                    if (!IS_RED(s->link[!last]) && !IS_RED(s->link[last]))
+                    if (!IS_RED(sibling->link[!last]) && !IS_RED(sibling->link[last]))
                     {
                         /* Color flip. */
-                        p->isRed = false;
-                        s->isRed = true;
-                        q->isRed = true;
+                        parent->isRed = false;
+                        sibling->isRed = true;
+                        pos->isRed = true;
                     }
                     else 
                     {
-                        bool dir2 = g->link[1] == p;
+                        bool dir2 = grandParent->link[RIGHT_CHILD] == parent;
 
-                        if (IS_RED(s->link[last]))
-                            g->link[dir2] = doubleRotate(p, last);
-                        else if (IS_RED(s->link[!last]))
-                            g->link[dir2] = singleRotate(p, last);
+                        if (IS_RED(sibling->link[last]))
+                            grandParent->link[dir2] = doubleRotate(parent, last);
+                        else if (IS_RED(sibling->link[!last]))
+                            grandParent->link[dir2] = singleRotate(parent, last);
 
                         /* Ensure correct coloring. */
-                        q->isRed = g->link[dir2]->isRed = true;
-                        g->link[dir2]->link[0]->isRed = false;
-                        g->link[dir2]->link[1]->isRed = false;
+                        pos->isRed = grandParent->link[dir2]->isRed = true;
+                        grandParent->link[dir2]->link[LEFT_CHILD]->isRed = false;
+                        grandParent->link[dir2]->link[RIGHT_CHILD]->isRed = false;
                     }
                 }
             }
@@ -242,13 +248,13 @@ void pmFreeListRemove(pmFreeList *fl, void *mem)
     }
 
     /* Replace and remove the saved node. */
-    if ( f != NULL ) 
+    if (found != NULL) 
     {
-        p->link[p->link[1] == q] = q->link[q->link[0] == NULL];
+        parent->link[parent->link[RIGHT_CHILD] == pos] = pos->link[pos->link[LEFT_CHILD] == NULL];
     }
 
     /* Update the root (it may be different). */
-    fl->root = head.link[1];
+    fl->root = head.link[RIGHT_CHILD];
 
     /* Make the root black for simplified logic. */
     if (fl->root != NULL)
@@ -260,7 +266,7 @@ void pmFreeListRemove(pmFreeList *fl, void *mem)
 }
 
 
-void *pmFreeListRemoveFirst(pmFreeList *fl)
+void *persmemFreeListRemoveFirst(pmFreeList *fl)
 {
     pmFreeListNode *first = fl->root;
 
@@ -269,12 +275,41 @@ void *pmFreeListRemoveFirst(pmFreeList *fl)
         return NULL;
     
     /* Descend to the left. */
-    while (first->link[0] != NULL)
+    while (first->link[LEFT_CHILD] != NULL)
     {
-        first = first->link[0];
+        first = first->link[LEFT_CHILD];
     }
 
     /* Remove it. */
-    pmFreeListRemove(fl, (void *)first);
+    persmemFreeListRemove(fl, (void *)first);
     return (void *)first;
+}
+
+
+
+/**
+  <summary>
+  Search for a copy of the specified
+  node data in a red black tree
+  <summary>
+  <param name="tree">The tree to search</param>
+  <param name="data">The data value to search for</param>
+  <returns>
+  A pointer to the data value stored in the tree,
+  or a null pointer if no data could be found
+  </returns>
+*/
+bool persmemFreeListFind(pmFreeList *fl, void *mem)
+{
+    pmFreeListNode *pos = fl->root;
+    
+    while (pos != NULL) 
+    {
+        if (pos == mem)
+            return true;
+        
+        pos = pos->link[(void *)pos < mem];
+    }
+    
+    return false;
 }

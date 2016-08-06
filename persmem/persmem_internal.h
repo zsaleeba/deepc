@@ -22,7 +22,8 @@
 #define PERSMEM_MIN_ALLOC_BITSIZE    5                                /* Max 2^26 * PERSMEM_MIN_ALLOC_SIZE bytes can be allocated. */
 #define PERSMEM_MIN_ALLOC_SIZE       (1 << PERSMEM_MIN_ALLOC_BITSIZE) /* Size of a pmFreeListNode rounded up to a power of two. */
 #endif
-#define PERSMEM_LEVEL_BLOCK_BYTES(b) ((1 << (b)) * PERSMEM_MIN_ALLOC_SIZE)
+#define PERSMEM_LEVEL_BLOCK_BYTES(b) (1 << ((b) + PERSMEM_MIN_ALLOC_BITSIZE))
+#define PERSMEM_MEM_FROM_LEVEL_OFFSET(pm,l,o) ((pm)->c->mapAddr + ((o) << ((l) + PERSMEM_MIN_ALLOC_BITSIZE)))
 
 /* min/max macros. */
 #ifndef min
@@ -86,8 +87,7 @@ void *persmemAllocBlock(PersMem *pm, unsigned needLevel);
 
 /* pool.c - memory pool. */
 bool   persmemPoolInit(PersMem *pm, unsigned newLevel, size_t masterStructSize);
-bool   persmemPoolExpand(PersMem *pm, unsigned newLevel);
-void   persmemPoolContract(PersMem *pm, unsigned newLevel);
+bool   persmemPoolResize(PersMem *pm, unsigned newLevel);
 size_t persmemPoolUsedBytes(PersMem *pm);
 void  *persmemMapFile(int fd, bool readOnly, void *mapAddr, size_t mapSize);
 
@@ -96,12 +96,12 @@ void     persmemAllocMapSet(pmAllocMap *map, unsigned level, size_t index, bool 
 bool     persmemAllocMapGet(pmAllocMap *map, unsigned level, size_t index);
 unsigned persmemAllocMapFindLevel(pmAllocMap *map, size_t index);
 unsigned persmemAllocMapGetBlockAllocLevel(unsigned level);
-size_t   persmemAllocMapSizeBytes(unsigned level);
 
 /* freelist.c - free list implemented as a red-black tree. */
 void  persmemFreeListInsert(pmFreeList *fl, void *mem);
 void  persmemFreeListRemove(pmFreeList *fl, void *mem);
 void *persmemFreeListRemoveFirst(pmFreeList *fl);
+bool  persmemFreeListFind(pmFreeList *fl, void *mem);
 
 #endif /* PERSMEM_INTERNAL */
 

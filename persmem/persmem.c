@@ -165,7 +165,14 @@ int pmclose(PersMem *pm)
 }
 
 
-/* For use when handling multiple persistent memory files at the same time. */
+/*
+ * NAME:        pmmalloc
+ * ACTION:      Allocate a block of memory in a specific persistent store.
+ * PARAMETERS:  PersMem *pm - the memory pool to use.
+ *              size_t size - the size of the memory to allocate.
+ * RETURNS:     void * - the allocated memory or NULL on error.
+ */
+
 void *pmmalloc(PersMem *pm, size_t size)
 {
     void *mem;
@@ -192,12 +199,22 @@ void *pmmalloc(PersMem *pm, size_t size)
         allocLevel = pm->c->depth + 1;
     }
         
-    persmemPoolExpand(pm, allocLevel);
+    /* Resize the pool. */
+    if (!persmemPoolResize(pm, allocLevel))
+        return NULL;
 
     /* Now try again to allocate it. */
     return persmemAllocBlock(pm, allocLevel);
 }
 
+
+/*
+ * NAME:        pmfree
+ * ACTION:      Free a previously allocated block of memory from a
+ *              specific persistent store.
+ * PARAMETERS:  PersMem *pm - the memory pool to use.
+ *              void *mem - the memory to free.
+ */
 
 void pmfree(PersMem *pm, void *mem)
 {
@@ -211,6 +228,16 @@ void pmfree(PersMem *pm, void *mem)
 }
 
 
+/*
+ * NAME:        pmcalloc
+ * ACTION:      Allocate a block of memory in a specific persistent store
+ *              and clear it to zeroes.
+ * PARAMETERS:  PersMem *pm - the memory pool to use.
+ *              size_t nmemb - the number of items to allocate.
+ *              size_t size - the size of each item to allocate.
+ * RETURNS:     void * - the allocated memory or NULL on error.
+ */
+
 void *pmcalloc(PersMem *pm, size_t nmemb, size_t size)
 {
     size_t allocSize = nmemb * size;
@@ -220,6 +247,17 @@ void *pmcalloc(PersMem *pm, size_t nmemb, size_t size)
     return mem;
 }
 
+
+/*
+ * NAME:        pmrealloc
+ * ACTION:      Change the size of a previously allocated block of memory.
+ *              May return a pointer to same memory (but resized) or may
+ *              move the item to a new location and return a pointer to that.
+ * PARAMETERS:  PersMem *pm - the memory pool to use.
+ *              void *mem - the memory to reallocate.
+ *              size_t size - the size of the memory to allocate.
+ * RETURNS:     void * - the reallocated memory or NULL on error.
+ */
 
 void *pmrealloc(PersMem *pm, void *mem, size_t size)
 {
@@ -267,7 +305,8 @@ void *pmrealloc(PersMem *pm, void *mem, size_t size)
         persmemAllocMapSet(pm->c->allocMap, oldLevel, oldLevelOffset, false);
 
         /* Split off and free the end of the block as many times as necessary to reach the new size. */
-        for (int level = oldLevel-1; level >= (int)newLevel; level--)
+        int level;
+        for (level = oldLevel-1; level >= (int)newLevel; level--)
         {
             /* Release a block at this level. */
             persmemFreeListInsert(&pm->c->freeList[level], mem + PERSMEM_LEVEL_BLOCK_BYTES(level));
