@@ -19,7 +19,10 @@ $(PMOBJDIR)/%.o: %.c
 clean:
 	rm -f $(TARGET) $(OBJS)
 
+test:
+	(cd tests; $(MAKE) test)
+
 $(PMOBJDIR):
 	mkdir -p $(PMOBJDIR)
 
-.PHONY:	all clean
+.PHONY:	all clean test
