@@ -6,7 +6,8 @@ PMTESTOBJDIR=  $(PMOBJDIR)/test
 CFLAGS += -g -W -Wall -Wextra -I..
 
 TARGET	= $(BINDIR)/pmtest
-LIBS	= $(PMOBJDIR)/persmem.a -lcunit
+PMLIB	= $(PMOBJDIR)/persmem.a
+LIBS	= -lcunit
 SRCS 	= pmtest.c
 OBJS    := $(SRCS:%.c=$(PMTESTOBJDIR)/%.o)
 
@@ -15,8 +16,8 @@ all:
 test:	$(PMTESTOBJDIR) $(TARGET)
 	@$(TARGET)
 
-$(TARGET): $(OBJS)
-	$(CC) $(CFLAGS) -o $(TARGET) $(OBJS) $(LIBS)
+$(TARGET): $(OBJS) $(PMLIB)
+	$(CC) $(CFLAGS) -o $(TARGET) $(OBJS) $(PMLIB) $(LIBS)
 
 $(PMTESTOBJDIR)/%.o: %.c
 	$(CC) $(CFLAGS) $(INCLUDES) -o $@ -c $<

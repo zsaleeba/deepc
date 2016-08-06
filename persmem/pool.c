@@ -25,7 +25,10 @@ void *persmemMapFile(int fd, bool readOnly, void *mapAddr, size_t mapSize)
 
     mapAddr = mmap(mapAddr, mapSize, protFlags, MAP_SHARED | MAP_FIXED, fd, 0);
     if (mapAddr == MAP_FAILED)
+    {
+        perror("map failed");
         return NULL;
+    }
     
     return mapAddr;
 }
@@ -54,7 +57,7 @@ bool persmemPoolInit(PersMem *pm, unsigned newLevel, size_t masterStructSize)
     size_t   controlBlockSize = persmemRoundUpPowerOf2(sizeof(persmemControl));
     size_t   masterBlockSize = persmemRoundUpPowerOf2(masterStructSize);
     size_t   allocMapSize = PERSMEM_LEVEL_BLOCK_BYTES(allocMapLevel);
-    unsigned usedLevel = persmemFitToDepth(controlBlockSize + masterBlockSize + allocMapSize) + 1;
+    unsigned usedLevel = persmemFitToDepth(controlBlockSize + masterBlockSize + allocMapSize) + 1 - PERSMEM_MIN_ALLOC_BITSIZE;
     unsigned level = max(newLevel, usedLevel);
 
     /* Adjust the file size. */
@@ -81,11 +84,11 @@ bool persmemPoolInit(PersMem *pm, unsigned newLevel, size_t masterStructSize)
 
     /* Create an outboard alloc map since we can't allocate in the pool just yet. */
     /* Allocate the control block. This will always be at the start. */
-    unsigned controlBlockLevel = persmemFitToDepth(controlBlockSize);
+    unsigned controlBlockLevel = persmemFitToDepth(controlBlockSize) - PERSMEM_MIN_ALLOC_BITSIZE;
     void *controlBlock = persmemAllocBlock(pm, controlBlockLevel);
     
     /* Allocate the master struct. */
-    unsigned masterBlockLevel = persmemFitToDepth(masterBlockSize);
+    unsigned masterBlockLevel = persmemFitToDepth(masterBlockSize) - PERSMEM_MIN_ALLOC_BITSIZE;
     pm->masterStruct = persmemAllocBlock(pm, masterBlockLevel);
     pc->masterStruct = pm->masterStruct;
 

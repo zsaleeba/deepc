@@ -23,7 +23,7 @@ unsigned persmemFitToDepth(size_t i)
     if (x > 0x00000003) { b = b +  2; x = x >>  2; }
     if (x > 0x00000001) { b = b +  1; }
 
-    /* Return the nearest power of two. */
+    /* Return the nearest same or greater power of two. */
     if ((((size_t)1)<<b) == i)
         return b;
     else

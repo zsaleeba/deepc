@@ -173,7 +173,20 @@ unsigned persmemAllocMapFindLevel(pmAllocMap *map, size_t offset)
 unsigned persmemAllocMapGetBlockAllocLevel(unsigned level)
 {
     if (level >= 6)
-        return level - 4;
+    {
+        /*
+         * The alloc map needs (2 * 2 ^ level) bits. That's one bit for each
+         * of the minimum sized blocks at the lowest level. Then half as many
+         * for the next level up and so on which gives 2x this number total.
+         * 
+         * The "+ 1" is for 2 * size.
+         * The "- PERSMEM_MIN_ALLOC_BITSIZE" gives the number of bytes per level.
+         * The "- 3" gives the number of bits per byte.
+         */
+        return level - PERSMEM_MIN_ALLOC_BITSIZE - 3 + 1;
+    }
     else
+    {
         return 0;
+    }
 }

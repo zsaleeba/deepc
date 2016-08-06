@@ -5,8 +5,11 @@
 
 #include "persmem.h"
 
+#define TEST_PATH "/tmp/pmtest.persmem"
+
 
 PersMem *pm = NULL;
+
 
 struct MasterStruct
 {
@@ -17,21 +20,22 @@ struct MasterStruct
 
 int initSystemSuite()
 {
-    unlink("test.pm");
+    unlink(TEST_PATH);
     return 0;
 }
 
 
 int cleanSystemSuite()
 {
-    unlink("test.pm");
+    unlink(TEST_PATH);
     return 0;
 }
 
 
 void testPmopen()
 {
-    pm = pmopen("test.pm", true, true, sizeof(struct MasterStruct));
+    pm = pmopen(TEST_PATH, true, true, sizeof(struct MasterStruct));
+    CU_ASSERT_FATAL(pm != NULL);
     CU_ASSERT(pm->wasCreated);
     CU_ASSERT(pm->masterStruct != NULL);
 }
@@ -39,6 +43,8 @@ void testPmopen()
 
 void testPmmalloc()
 {
+    CU_ASSERT_FATAL(pm != NULL);
+
     void *mem = pmmalloc(pm, 6);
     CU_ASSERT(mem != NULL);
     memcpy(mem, "hello", 6);
@@ -47,6 +53,8 @@ void testPmmalloc()
 
 void testPmclose()
 {
+    CU_ASSERT_FATAL(pm != NULL);
+
     pmclose(pm);
 }
 

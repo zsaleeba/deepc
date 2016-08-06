@@ -63,7 +63,7 @@ PersMem *pmopen(const char *path, bool writable, bool createIfMissing, size_t ma
         openFlags |= O_CREAT;
     }
     
-    int fd = open(path, openFlags);
+    int fd = open(path, openFlags, 0777);
     if (fd < 0)
         return NULL;
 
@@ -179,7 +179,7 @@ void *pmmalloc(PersMem *pm, size_t size)
     unsigned allocLevel;
 
     /* Try to allocate it from the current free lists. */
-    unsigned needLevel = persmemFitToDepth(size);
+    unsigned needLevel = persmemFitToDepth(size) - PERSMEM_MIN_ALLOC_BITSIZE;
     mem = persmemAllocBlock(pm, needLevel);
     if (mem)
         return mem;
@@ -275,7 +275,7 @@ void *pmrealloc(PersMem *pm, void *mem, size_t size)
     unsigned oldLevel = persmemAllocMapFindLevel(pm->c->allocMap, index);
 
     /* What size do we need to allocate? */
-    unsigned newLevel = persmemFitToDepth(size);
+    unsigned newLevel = persmemFitToDepth(size) - PERSMEM_MIN_ALLOC_BITSIZE;
 
     /* If it still fits in the same block size just leave it alone. */
     if (oldLevel == newLevel)
