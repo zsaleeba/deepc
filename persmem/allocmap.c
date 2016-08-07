@@ -78,45 +78,45 @@
 /*
  * NAME:        persmemAllocMapGet
  * ACTION:      Get the status of a memory block from the alloc map.
- * PARAMETERS:  pmAllocMap *map  - the alloc map to use.
+ * PARAMETERS:  uint32_t *map  - the alloc map to use.
  *              unsigned level - the level in the bitmap.
  *                               0 = the lowest level, ie. the smallest block size
  *              size_t index   - the index of the block in the set of all blocks of that level.
  * RETURNS:     bool - the status of the block. free / allocated / split.
  */
 
-bool persmemAllocMapGet(pmAllocMap *map, unsigned level, size_t index)
+bool persmemAllocMapGet(uint32_t *map, unsigned level, size_t index)
 {
     size_t mapStart = (1 << level) - 1;
     size_t mapStepped = index << (level + 1);
     size_t mapOffset = mapStart + mapStepped;
-    size_t wordOffset = mapOffset >> 5;
+    size_t wordOffset = mapOffset >> 5;     /* 2^5 = 32 bits to a uint32_t in the bitmap. */
     size_t bitOffset = mapOffset & 0x1f;
 
-    return (map->bitmap[wordOffset] >> bitOffset) & 0x01;
+    return (map[wordOffset] >> bitOffset) & 0x01;
 }
 
 
 /*
  * NAME:        persmemAllocMapSet
  * ACTION:      Set the status of a memory block in the alloc map.
- * PARAMETERS:  pmAllocMap *map  - the alloc map to use.
+ * PARAMETERS:  uint32_t *map  - the alloc map to use.
  *              unsigned level - the level in the bitmap.
  *                               0 = the lowest level, ie. the smallest block size
  *              size_t index   - the index of the block in the set of all blocks of that level.
  *              bool           - the status of the block. allocated / unallocated.
  */
 
-void persmemAllocMapSet(pmAllocMap *map, unsigned level, size_t index, bool allocated)
+void persmemAllocMapSet(uint32_t *map, unsigned level, size_t index, bool allocated)
 {
     size_t mapStart = (1 << level) - 1;
     size_t mapStepped = index << (level + 1);
     size_t mapOffset = mapStart + mapStepped;
-    size_t wordOffset = mapOffset >> 5;
+    size_t wordOffset = mapOffset >> 5;     /* 2^5 = 32 bits to a uint32_t in the bitmap. */
     size_t bitOffset = mapOffset & 0x1f;
 
-    uint32_t maskedWord = map->bitmap[wordOffset] & ~(1 << bitOffset);
-    map->bitmap[wordOffset] = maskedWord | (allocated << bitOffset);
+    uint32_t maskedWord = map[wordOffset] & ~(1 << bitOffset);
+    map[wordOffset] = maskedWord | (allocated << bitOffset);
 }
 
 
@@ -131,13 +131,13 @@ void persmemAllocMapSet(pmAllocMap *map, unsigned level, size_t index, bool allo
  *              block whch has all zeroes in the addresses below it down to the minimum
  *              block size. We stop when we find one with the "allocated" bit set.
  *
- * PARAMETERS:  pmAllocMap *map - the alloc map to use.
- *              size_t offset   - the memory offset from the start to find.
- * RETURNS:     int             - the allocated level if positive. -1 if not allocated.
- *                               0 = the lowest level, ie. the smallest block size
+ * PARAMETERS:  uint32_t *map - the alloc map to use.
+ *              size_t offset - the memory offset from the start to find.
+ * RETURNS:     int           - the allocated level if positive. -1 if not allocated.
+ *                             0 = the lowest level, ie. the smallest block size
  */
 
-unsigned persmemAllocMapFindLevel(pmAllocMap *map, size_t offset)
+unsigned persmemAllocMapFindLevel(uint32_t *map, size_t offset)
 {
     int level;
 

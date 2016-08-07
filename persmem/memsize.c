@@ -10,7 +10,7 @@
  * RETURNS:     The nearest power of two greater than or equal to the value of i.
  */
 
-unsigned persmemFitToDepth(size_t i)
+unsigned persmemFitToLevel(size_t i)
 {
     /* Find the most significant set bit. */
     int b = 0;
@@ -24,10 +24,20 @@ unsigned persmemFitToDepth(size_t i)
     if (x > 0x00000001) { b = b +  1; }
 
     /* Return the nearest same or greater power of two. */
-    if ((((size_t)1)<<b) == i)
-        return b;
+    unsigned bitPos = b;
+    if ((((size_t)1)<<b) != i)
+    {
+        /* 
+         * It's not an exact power of two - step up to the next power to 
+         * cover it. 
+         */
+        bitPos++;
+    }
+    
+    if (bitPos < PERSMEM_MIN_ALLOC_BITSIZE)
+        return 0;
     else
-        return b+1;
+        return bitPos - PERSMEM_MIN_ALLOC_BITSIZE;
 }
 
 
@@ -40,5 +50,5 @@ unsigned persmemFitToDepth(size_t i)
 
 size_t persmemRoundUpPowerOf2(size_t i)
 {
-    return 1 << persmemFitToDepth(i);
+    return 1 << persmemFitToLevel(i);
 }

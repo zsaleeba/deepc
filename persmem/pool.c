@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <unistd.h>
 #include <string.h>
 #include <sys/mman.h>
@@ -22,8 +23,14 @@ void *persmemMapFile(int fd, bool readOnly, void *mapAddr, size_t mapSize)
     {
         protFlags |= PROT_WRITE;
     }
+    
+    int mapFlags = MAP_SHARED;
+    if (mapAddr != NULL)
+    {
+        mapFlags |= MAP_FIXED;
+    }
 
-    mapAddr = mmap(mapAddr, mapSize, protFlags, MAP_SHARED | MAP_FIXED, fd, 0);
+    mapAddr = mmap(mapAddr, mapSize, protFlags, mapFlags, fd, 0);
     if (mapAddr == MAP_FAILED)
     {
         perror("map failed");
@@ -52,12 +59,16 @@ void *persmemMapFile(int fd, bool readOnly, void *mapAddr, size_t mapSize)
 
 bool persmemPoolInit(PersMem *pm, unsigned newLevel, size_t masterStructSize)
 {
+    static char magic[8] = PERSMEM_MAGIC;
+    
     /* How large do we need it to be? */
-    unsigned allocMapLevel = persmemAllocMapGetBlockAllocLevel(newLevel);
-    size_t   controlBlockSize = persmemRoundUpPowerOf2(sizeof(persmemControl));
-    size_t   masterBlockSize = persmemRoundUpPowerOf2(masterStructSize);
-    size_t   allocMapSize = PERSMEM_LEVEL_BLOCK_BYTES(allocMapLevel);
-    unsigned usedLevel = persmemFitToDepth(controlBlockSize + masterBlockSize + allocMapSize) + 1 - PERSMEM_MIN_ALLOC_BITSIZE;
+    unsigned allocMapLevel     = persmemAllocMapGetBlockAllocLevel(newLevel);
+    unsigned controlBlockLevel = persmemFitToLevel(sizeof(persmemControl));
+    unsigned masterBlockLevel  = persmemFitToLevel(masterStructSize);
+    size_t   controlBlockSize  = PERSMEM_LEVEL_BLOCK_BYTES(controlBlockLevel);
+    size_t   masterBlockSize   = PERSMEM_LEVEL_BLOCK_BYTES(masterBlockLevel );
+    size_t   allocMapSize      = PERSMEM_LEVEL_BLOCK_BYTES(allocMapLevel);
+    unsigned usedLevel         = persmemFitToLevel(controlBlockSize + masterBlockSize + allocMapSize) + 1;
     unsigned level = max(newLevel, usedLevel);
 
     /* Adjust the file size. */
@@ -69,31 +80,36 @@ bool persmemPoolInit(PersMem *pm, unsigned newLevel, size_t masterStructSize)
     if (pm->c == NULL)
         return false;
 
-    /* Initialise the header. */
+    /* Create the free list with an initial block of the entire size. */
     persmemControl *pc = pm->c;
     memset(pc, 0, sizeof(persmemControl));
-    memcpy(pc->magic, PERSMEM_MAGIC, sizeof(pc->magic));
+    pc->mapLevel = level;
+
+    int i;
+    for (i = 0; i < PERSMEM_MAX_LEVEL; i++)
+    {
+        persmemFreeListInit(&pc->freeList[i]);
+    }
+    
+    persmemFreeListInsert(&pc->freeList[PERSMEM_INITIAL_LEVEL], pc);
+
+    /* Allocate the control block. This will always be at the start. */
+    void *controlBlock = persmemAllocBlockFromFreeList(pm, controlBlockLevel);
+    
+    /* Initialise the control block. */
+    memcpy(pc->magic, magic, sizeof(pc->magic));
     pc->version_major = PERSMEM_FORMAT_VERSION_MAJOR;
     pc->version_minor = PERSMEM_FORMAT_VERSION_MINOR;
     pc->mapAddr = pc;
-    pc->depth = level;
     pc->mapSize = fileSize;
+    pm->wasCreated = true;
 
-    /* Create the free list with an initial block of the entire size. */
-    persmemFreeListInsert(&pc->freeList[PERSMEM_INITIAL_LEVEL], pc->mapAddr);
-
-    /* Create an outboard alloc map since we can't allocate in the pool just yet. */
-    /* Allocate the control block. This will always be at the start. */
-    unsigned controlBlockLevel = persmemFitToDepth(controlBlockSize) - PERSMEM_MIN_ALLOC_BITSIZE;
-    void *controlBlock = persmemAllocBlock(pm, controlBlockLevel);
-    
     /* Allocate the master struct. */
-    unsigned masterBlockLevel = persmemFitToDepth(masterBlockSize) - PERSMEM_MIN_ALLOC_BITSIZE;
-    pm->masterStruct = persmemAllocBlock(pm, masterBlockLevel);
+    pm->masterStruct = persmemAllocBlockFromFreeList(pm, masterBlockLevel);
     pc->masterStruct = pm->masterStruct;
 
     /* Allocate the alloc map in persistent memory and copy across the temp one. */
-    pc->allocMap = persmemAllocBlock(pm, allocMapLevel);
+    pc->allocMap = persmemAllocBlockFromFreeList(pm, allocMapLevel);
 
     /* Mark these three blocks as allocated in the alloc map. */
     persmemAllocMarkInAllocMap(pm, controlBlock, controlBlockLevel);
@@ -135,10 +151,10 @@ bool persmemPoolResize(PersMem *pm, unsigned newLevel)
 
     /* Fix the free list. */
     unsigned level;
-    if (newLevel > pm->c->depth)
+    if (newLevel > pm->c->mapLevel)
     {
         /* Add the new storage to the free list. */
-        for (level = pm->c->depth; level < newLevel; level++)
+        for (level = pm->c->mapLevel; level < newLevel; level++)
         {
             persmemFreeListInsert(&pm->c->freeList[level], pm->c->mapAddr + PERSMEM_LEVEL_BLOCK_BYTES(level));
         }
@@ -146,7 +162,7 @@ bool persmemPoolResize(PersMem *pm, unsigned newLevel)
     else
     {
         /* Remove trailing unused storage from the free list. */
-        for (level = newLevel; level < pm->c->depth; level++)
+        for (level = newLevel; level < pm->c->mapLevel; level++)
         {
             persmemFreeListRemove(&pm->c->freeList[level], pm->c->mapAddr + PERSMEM_LEVEL_BLOCK_BYTES(level));
         }
@@ -154,11 +170,11 @@ bool persmemPoolResize(PersMem *pm, unsigned newLevel)
 
     /* Update the control structure. */
     void *oldAllocMap = pm->c->allocMap;
-    unsigned oldAllocMapLevel = persmemAllocMapGetBlockAllocLevel(pm->c->depth);
+    unsigned oldAllocMapLevel = persmemAllocMapGetBlockAllocLevel(pm->c->mapLevel);
     unsigned newAllocMapLevel = persmemAllocMapGetBlockAllocLevel(newLevel);
     size_t   oldAllocMapSize  = PERSMEM_LEVEL_BLOCK_BYTES(oldAllocMapLevel);
     size_t   newAllocMapSize  = PERSMEM_LEVEL_BLOCK_BYTES(newAllocMapLevel);
-    pm->c->depth = newLevel;
+    pm->c->mapLevel = newLevel;
     pm->c->mapSize = newSize;
 
     /* Resize the alloc map. */

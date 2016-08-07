@@ -47,6 +47,7 @@ PersMem *pmopen(const char *path, bool writable, bool createIfMissing, size_t ma
     PersMem pm;
 
     /* Open the file. */
+    memset(&pm, 0, sizeof(pm));
     if (writable)
     {
         pm.readOnly = false;
@@ -179,13 +180,13 @@ void *pmmalloc(PersMem *pm, size_t size)
     unsigned allocLevel;
 
     /* Try to allocate it from the current free lists. */
-    unsigned needLevel = persmemFitToDepth(size) - PERSMEM_MIN_ALLOC_BITSIZE;
+    unsigned needLevel = persmemFitToLevel(size);
     mem = persmemAllocBlock(pm, needLevel);
     if (mem)
         return mem;
 
     /* It's not possible to allocate from the current store. Increase the size of the pool. */
-    if (needLevel >= pm->c->depth)
+    if (needLevel >= pm->c->mapLevel)
     {
         /*
          * It's a big new allocation.
@@ -196,7 +197,7 @@ void *pmmalloc(PersMem *pm, size_t size)
     else
     {
         /* It's a smaller allocation. Just double the pool size. */
-        allocLevel = pm->c->depth + 1;
+        allocLevel = pm->c->mapLevel + 1;
     }
         
     /* Resize the pool. */
@@ -275,7 +276,7 @@ void *pmrealloc(PersMem *pm, void *mem, size_t size)
     unsigned oldLevel = persmemAllocMapFindLevel(pm->c->allocMap, index);
 
     /* What size do we need to allocate? */
-    unsigned newLevel = persmemFitToDepth(size) - PERSMEM_MIN_ALLOC_BITSIZE;
+    unsigned newLevel = persmemFitToLevel(size);
 
     /* If it still fits in the same block size just leave it alone. */
     if (oldLevel == newLevel)

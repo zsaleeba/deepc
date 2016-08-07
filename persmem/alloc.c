@@ -15,7 +15,7 @@ void *persmemAllocBlockFromFreeList(PersMem *pm, unsigned needLevel)
     unsigned level;
 
     /* Try to find a block of the smallest usable size. */
-    for (level = needLevel; level <= pm->c->depth; level++)
+    for (level = needLevel; level <= pm->c->mapLevel; level++)
     {
         /* Is there a block of this size in the free list? */
         void *mem = persmemFreeListRemoveFirst(&pm->c->freeList[level]);
@@ -102,7 +102,7 @@ void persmemFreeBlock(PersMem *pm, unsigned level, size_t offset)
 {
     /* Coalesce this block as much as possible. */
     bool readyToFree = false;
-    while (!readyToFree && level < pm->c->depth - 1)
+    while (!readyToFree && level < pm->c->mapLevel - 1)
     {
         /* Can we free this block's buddy? */
         size_t buddyOffset = offset ^ 0x1;
