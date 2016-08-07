@@ -14,7 +14,7 @@ PersMem *pm = NULL;
 struct MasterStruct
 {
     int a;
-    void *b;
+    char *b;
 };
 
 
@@ -48,10 +48,35 @@ void testPmmalloc()
     void *mem = pmmalloc(pm, 6);
     CU_ASSERT(mem != NULL);
     memcpy(mem, "hello", 6);
+    
+    struct MasterStruct *ms = pm->masterStruct;
+    ms->a = 42;
+    ms->b = mem;
 }
 
 
 void testPmclose()
+{
+    CU_ASSERT_FATAL(pm != NULL);
+
+    pmclose(pm);
+}
+
+
+void testReopen()
+{
+    pm = pmopen(TEST_PATH, true, true, sizeof(struct MasterStruct));
+    CU_ASSERT_FATAL(pm != NULL);
+    CU_ASSERT(pm->wasCreated);
+    CU_ASSERT(pm->masterStruct != NULL);
+    
+    struct MasterStruct *ms = pm->masterStruct;
+    CU_ASSERT(ms->a == 42);
+    CU_ASSERT(strcmp(ms->b, "hello") == 0);
+}
+
+
+void testReclose()
 {
     CU_ASSERT_FATAL(pm != NULL);
 
@@ -79,7 +104,9 @@ int main()
     /* NOTE - ORDER IS IMPORTANT - MUST TEST fread() AFTER fprintf() */
     if ((CU_add_test(pSuite, "test of pmopen()", testPmopen) == NULL) ||
             (CU_add_test(pSuite, "test of pmmalloc()", testPmmalloc) == NULL) ||
-            (CU_add_test(pSuite, "test of pmclose()", testPmclose) == NULL))
+            (CU_add_test(pSuite, "test of pmclose()", testPmclose) == NULL) ||
+            (CU_add_test(pSuite, "test of re-open", testReopen) == NULL) ||
+            (CU_add_test(pSuite, "test of re-close", testReclose) == NULL))
     {
         CU_cleanup_registry();
         return CU_get_error();
