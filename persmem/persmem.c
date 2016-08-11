@@ -132,8 +132,12 @@ PersMem *pmopen(const char *path, bool writable, bool createIfMissing, size_t ma
             return NULL;
         
         /* Map it to the correct address. */
-        if (!persmemMapFile(pm.fd, pm.readOnly, pc.mapAddr, pc.mapSize))
+        pm.c = persmemMapFile(pm.fd, pm.readOnly, pc.mapAddr, pc.mapSize);
+        if (pm.c == NULL)
             return false;
+
+        /* Find the master structure. */
+        pm.masterStruct = pm.c->masterStruct;
     }
 
     /* Create the handle. */
@@ -220,8 +224,8 @@ void *pmmalloc(PersMem *pm, size_t size)
 void pmfree(PersMem *pm, void *mem)
 {
     /* Free the block from the alloc map. */
-    size_t index = mem - pm->c->mapAddr;
-    unsigned level = persmemAllocMapFindLevel(pm->c->allocMap, index);
+    size_t offset = mem - pm->c->mapAddr;
+    unsigned level = persmemAllocMapFindLevel(pm->c->allocMap, offset);
     persmemAllocMapSet(pm->c->allocMap, level, index, false);
 
     /* Add it to the free list. */

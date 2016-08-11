@@ -13,7 +13,7 @@ OBJS    := $(SRCS:%.c=$(PMTESTOBJDIR)/%.o)
 
 all:
 
-test:	$(PMTESTOBJDIR) $(TARGET)
+test:	$(PMTESTOBJDIR) $(BINDIR) $(TARGET)
 	@$(TARGET)
 
 $(TARGET): $(OBJS) $(PMLIB)
@@ -27,5 +27,8 @@ clean:
 
 $(PMTESTOBJDIR):
 	mkdir -p $(PMTESTOBJDIR)
+
+$(BINDIR):
+	mkdir -p $(BINDIR)
 
 .PHONY:	all clean test

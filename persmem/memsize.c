@@ -50,5 +50,5 @@ unsigned persmemFitToLevel(size_t i)
 
 size_t persmemRoundUpPowerOf2(size_t i)
 {
-    return 1 << persmemFitToLevel(i);
+    return PERSMEM_LEVEL_BLOCK_BYTES(persmemFitToLevel(i));
 }

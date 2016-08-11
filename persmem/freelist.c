@@ -57,7 +57,7 @@ static pmFreeListNode *singleRotate(pmFreeListNode *root, bool dir)
 */
 static pmFreeListNode *doubleRotate(pmFreeListNode *root, bool dir)
 {
-    root->link[!dir] = doubleRotate(root->link[!dir], !dir);
+    root->link[!dir] = singleRotate(root->link[!dir], !dir);
 
     return singleRotate(root, dir);
 }

@@ -6,6 +6,10 @@
 #include "persmem.h"
 
 #define TEST_PATH "/tmp/pmtest.persmem"
+#define MULTI_PMMALLOC_NUM_ALLOCS 10
+#define MULTI_PMMALLOC_ALLOC_SIZE 256
+#define RANDOM_ALLOC_ITERATIONS 100000
+#define RANDOM_ALLOC_MAX_BLOCKS 1000
 
 
 PersMem *pm = NULL;
@@ -15,6 +19,7 @@ struct MasterStruct
 {
     int a;
     char *b;
+    void *multi[MULTI_PMMALLOC_NUM_ALLOCS];
 };
 
 
@@ -48,10 +53,28 @@ void testPmmalloc()
     void *mem = pmmalloc(pm, 6);
     CU_ASSERT(mem != NULL);
     memcpy(mem, "hello", 6);
-    
+
     struct MasterStruct *ms = pm->masterStruct;
     ms->a = 42;
     ms->b = mem;
+}
+
+
+void testMultiPmmalloc()
+{
+    int i;
+    CU_ASSERT_FATAL(pm != NULL);
+
+    void *mem = pmmalloc(pm, 6);
+    CU_ASSERT(mem != NULL);
+    memcpy(mem, "hello", 6);
+
+    struct MasterStruct *ms = pm->masterStruct;
+    for (i = 0; i < MULTI_PMMALLOC_NUM_ALLOCS; i++)
+    {
+        ms->multi[i] = pmmalloc(pm, MULTI_PMMALLOC_ALLOC_SIZE);
+        CU_ASSERT(ms->multi[i] != NULL);
+    }
 }
 
 
@@ -67,12 +90,79 @@ void testReopen()
 {
     pm = pmopen(TEST_PATH, true, true, sizeof(struct MasterStruct));
     CU_ASSERT_FATAL(pm != NULL);
-    CU_ASSERT(pm->wasCreated);
-    CU_ASSERT(pm->masterStruct != NULL);
+    CU_ASSERT(!pm->wasCreated);
+    CU_ASSERT_FATAL(pm->masterStruct != NULL);
     
     struct MasterStruct *ms = pm->masterStruct;
     CU_ASSERT(ms->a == 42);
     CU_ASSERT(strcmp(ms->b, "hello") == 0);
+}
+
+
+void testPmfree()
+{
+    struct MasterStruct *ms = pm->masterStruct;
+    pmfree(pm, ms->b);
+    ms->b = NULL;
+}
+
+
+void testMultiPmfree()
+{
+    struct MasterStruct *ms = pm->masterStruct;
+
+    int i;
+    for (i = 0; i < MULTI_PMMALLOC_NUM_ALLOCS; i++)
+    {
+        pmfree(pm, ms->multi[i]);
+        ms->multi[i] = NULL;
+    }
+}
+
+
+void testRandomAlloc()
+{
+    int i;
+    void *block[RANDOM_ALLOC_MAX_BLOCKS*2];
+
+    /* Allocate and free blocks at random. */
+    for (i = 0; i < RANDOM_ALLOC_ITERATIONS; i++)
+    {
+        /* Find a free block slot. */
+        int blockPos;
+        do
+        {
+            blockPos = rand() % (RANDOM_ALLOC_MAX_BLOCKS*2);
+        } while (block[blockPos] != NULL);
+
+        /* Allocate a block here. */
+        int blockSize = 1 << (rand() % 6 + 5);
+        block[blockPos] = pmmalloc(pm, blockSize);
+
+        if (i >= RANDOM_ALLOC_MAX_BLOCKS)
+        {
+            /* Find a used block slot. */
+            int blockPos;
+            do
+            {
+                blockPos = rand() % (RANDOM_ALLOC_MAX_BLOCKS*2);
+            } while (block[blockPos] == NULL);
+
+            /* Free the block here. */
+            pmfree(pm, block[blockPos]);
+            block[blockPos] = NULL;
+        }
+    }
+
+    /* Free the remaining blocks. */
+    for (i = 0; i < RANDOM_ALLOC_MAX_BLOCKS*2; i++)
+    {
+        if (block[i] != NULL)
+        {
+            pmfree(pm, block[i]);
+            block[i] = NULL;
+        }
+    }
 }
 
 
@@ -101,11 +191,14 @@ int main()
     }
  
     /* add the tests to the suite */
-    /* NOTE - ORDER IS IMPORTANT - MUST TEST fread() AFTER fprintf() */
     if ((CU_add_test(pSuite, "test of pmopen()", testPmopen) == NULL) ||
             (CU_add_test(pSuite, "test of pmmalloc()", testPmmalloc) == NULL) ||
+            (CU_add_test(pSuite, "test of multiple pmmalloc()", testMultiPmmalloc) == NULL) ||
+            (CU_add_test(pSuite, "test of random alloc/free", testRandomAlloc) == NULL) ||
             (CU_add_test(pSuite, "test of pmclose()", testPmclose) == NULL) ||
             (CU_add_test(pSuite, "test of re-open", testReopen) == NULL) ||
+            (CU_add_test(pSuite, "test of pmfree()", testPmfree) == NULL) ||
+            (CU_add_test(pSuite, "test of multi pmfree()", testMultiPmfree) == NULL) ||
             (CU_add_test(pSuite, "test of re-close", testReclose) == NULL))
     {
         CU_cleanup_registry();
