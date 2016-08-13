@@ -14,6 +14,7 @@
 #define MAX_BLOCK_INFO 1024
 
 PersMem *pm = NULL;
+int expectedAllocs = 0;
 
 
 struct MasterStruct
@@ -51,12 +52,24 @@ void showAllocMap()
 }
 
 
+int getAllocMapSize()
+{
+    PersMemBlockInfo blocks[MAX_BLOCK_INFO];
+    size_t blockMax = MAX_BLOCK_INFO;
+    persmemAllocMapBlockInfo(pm, blocks, &blockMax);
+    return blockMax;
+}
+
+
 void testPmopen()
 {
     pm = pmopen(TEST_PATH, true, true, sizeof(struct MasterStruct));
     CU_ASSERT_FATAL(pm != NULL);
     CU_ASSERT(pm->wasCreated);
     CU_ASSERT(pm->masterStruct != NULL);
+    
+    expectedAllocs = 3;
+    CU_ASSERT(getAllocMapSize() == expectedAllocs);
 }
 
 
@@ -71,6 +84,10 @@ void testPmmalloc()
     struct MasterStruct *ms = pm->masterStruct;
     ms->a = 42;
     ms->b = mem;
+    CU_ASSERT(getAllocMapSize() == 4);
+    
+    expectedAllocs++;
+    CU_ASSERT(getAllocMapSize() == expectedAllocs);
 }
 
 
@@ -85,6 +102,9 @@ void testMultiPmmalloc()
         ms->multi[i] = pmmalloc(pm, MULTI_PMMALLOC_ALLOC_SIZE);
         CU_ASSERT(ms->multi[i] != NULL);
     }
+    
+    expectedAllocs += MULTI_PMMALLOC_NUM_ALLOCS;
+    CU_ASSERT(getAllocMapSize() == expectedAllocs);
 }
 
 
@@ -106,6 +126,8 @@ void testReopen()
     struct MasterStruct *ms = pm->masterStruct;
     CU_ASSERT(ms->a == 42);
     CU_ASSERT(strcmp(ms->b, "hello") == 0);
+    
+    CU_ASSERT(getAllocMapSize() == expectedAllocs);
 }
 
 
@@ -114,6 +136,9 @@ void testPmfree()
     struct MasterStruct *ms = pm->masterStruct;
     pmfree(pm, ms->b);
     ms->b = NULL;
+    
+    expectedAllocs--;
+    CU_ASSERT(getAllocMapSize() == expectedAllocs);
 }
 
 
@@ -127,6 +152,9 @@ void testMultiPmfree()
         pmfree(pm, ms->multi[i]);
         ms->multi[i] = NULL;
     }
+    
+    expectedAllocs -= MULTI_PMMALLOC_NUM_ALLOCS;
+    CU_ASSERT(getAllocMapSize() == expectedAllocs);
 }
 
 
@@ -135,9 +163,10 @@ void testRandomAlloc()
     int i;
     void *block[RANDOM_ALLOC_MAX_BLOCKS*2];
 
+    /* Clear the blocks for a start. */
     for (i = 0; i < RANDOM_ALLOC_MAX_BLOCKS * 2; i++)
     {
-        block[i] = 0;
+        block[i] = NULL;
     }
 
     /* Allocate and free blocks at random. */
@@ -169,6 +198,8 @@ void testRandomAlloc()
         }
     }
 
+    CU_ASSERT(getAllocMapSize() == expectedAllocs + RANDOM_ALLOC_MAX_BLOCKS);
+    
     /* Free the remaining blocks. */
     for (i = 0; i < RANDOM_ALLOC_MAX_BLOCKS*2; i++)
     {
@@ -178,6 +209,8 @@ void testRandomAlloc()
             block[i] = NULL;
         }
     }
+
+    CU_ASSERT(getAllocMapSize() == expectedAllocs);
 }
 
 
