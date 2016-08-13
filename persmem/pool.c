@@ -91,7 +91,7 @@ bool persmemPoolInit(PersMem *pm, unsigned newLevel, size_t masterStructSize)
         persmemFreeListInit(&pc->freeList[i]);
     }
     
-    persmemFreeListInsert(&pc->freeList[PERSMEM_INITIAL_LEVEL], pc);
+    persmemFreeListInsert(&pc->freeList[level], pc);
 
     /* Allocate the control block. This will always be at the start. */
     void *controlBlock = persmemAllocBlockFromFreeList(pm, controlBlockLevel);

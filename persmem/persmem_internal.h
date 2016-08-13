@@ -68,6 +68,14 @@ struct _persmemControl
 };
 
 
+/* Used for results from persmemAllocMapBlockInfo. */
+typedef struct
+{
+    void *mem;
+    size_t size;
+} PersMemBlockInfo;
+
+
 /* memsize.c - memory size and access. */
 unsigned persmemFitToLevel(size_t i);
 size_t persmemRoundUpPowerOf2(size_t i);
@@ -86,8 +94,9 @@ void  *persmemMapFile(int fd, bool readOnly, void *mapAddr, size_t mapSize);
 /* allocmap.c - block allocation map. */
 void     persmemAllocMapSet(uint32_t *map, unsigned level, size_t index, bool allocated);
 bool     persmemAllocMapGet(uint32_t *map, unsigned level, size_t index);
-unsigned persmemAllocMapFindLevel(uint32_t *map, size_t index);
+int      persmemAllocMapFindLevel(uint32_t *map, size_t index);
 unsigned persmemAllocMapGetBlockAllocLevel(unsigned level);
+void     persmemAllocMapBlockInfo(PersMem *pm, PersMemBlockInfo *blocks, size_t *numBlocks);
 
 /* freelist.c - free list implemented as a red-black tree. */
 void  persmemFreeListInit(pmFreeList *fl);

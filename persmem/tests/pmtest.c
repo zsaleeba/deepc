@@ -4,13 +4,14 @@
 #include <CUnit/Basic.h>
 
 #include "persmem.h"
+#include "persmem_internal.h"
 
 #define TEST_PATH "/tmp/pmtest.persmem"
 #define MULTI_PMMALLOC_NUM_ALLOCS 10
 #define MULTI_PMMALLOC_ALLOC_SIZE 256
 #define RANDOM_ALLOC_ITERATIONS 100000
 #define RANDOM_ALLOC_MAX_BLOCKS 1000
-
+#define MAX_BLOCK_INFO 1024
 
 PersMem *pm = NULL;
 
@@ -37,12 +38,27 @@ int cleanSystemSuite()
 }
 
 
+void showAllocMap()
+{
+    PersMemBlockInfo blocks[MAX_BLOCK_INFO];
+    size_t blockMax = MAX_BLOCK_INFO;
+    persmemAllocMapBlockInfo(pm, blocks, &blockMax);
+    size_t block;
+    for (block = 0; block < blockMax; block++)
+    {
+        printf("block %d: %p %d\n", block, blocks[block].mem, blocks[block].size);
+    }
+}
+
+
 void testPmopen()
 {
     pm = pmopen(TEST_PATH, true, true, sizeof(struct MasterStruct));
     CU_ASSERT_FATAL(pm != NULL);
     CU_ASSERT(pm->wasCreated);
     CU_ASSERT(pm->masterStruct != NULL);
+
+    showAllocMap();
 }
 
 
@@ -57,6 +73,10 @@ void testPmmalloc()
     struct MasterStruct *ms = pm->masterStruct;
     ms->a = 42;
     ms->b = mem;
+    
+    printf("block is at %p\n", mem);
+    
+    showAllocMap();
 }
 
 
@@ -65,16 +85,14 @@ void testMultiPmmalloc()
     int i;
     CU_ASSERT_FATAL(pm != NULL);
 
-    void *mem = pmmalloc(pm, 6);
-    CU_ASSERT(mem != NULL);
-    memcpy(mem, "hello", 6);
-
     struct MasterStruct *ms = pm->masterStruct;
     for (i = 0; i < MULTI_PMMALLOC_NUM_ALLOCS; i++)
     {
         ms->multi[i] = pmmalloc(pm, MULTI_PMMALLOC_ALLOC_SIZE);
         CU_ASSERT(ms->multi[i] != NULL);
     }
+    
+    showAllocMap();
 }
 
 
@@ -104,6 +122,8 @@ void testPmfree()
     struct MasterStruct *ms = pm->masterStruct;
     pmfree(pm, ms->b);
     ms->b = NULL;
+    
+    showAllocMap();
 }
 
 
@@ -124,6 +144,11 @@ void testRandomAlloc()
 {
     int i;
     void *block[RANDOM_ALLOC_MAX_BLOCKS*2];
+
+    for (i = 0; i < RANDOM_ALLOC_MAX_BLOCKS * 2; i++)
+    {
+        block[i] = 0;
+    }
 
     /* Allocate and free blocks at random. */
     for (i = 0; i < RANDOM_ALLOC_ITERATIONS; i++)
@@ -193,11 +218,11 @@ int main()
     /* add the tests to the suite */
     if ((CU_add_test(pSuite, "test of pmopen()", testPmopen) == NULL) ||
             (CU_add_test(pSuite, "test of pmmalloc()", testPmmalloc) == NULL) ||
+            (CU_add_test(pSuite, "test of pmfree()", testPmfree) == NULL) ||
             (CU_add_test(pSuite, "test of multiple pmmalloc()", testMultiPmmalloc) == NULL) ||
             (CU_add_test(pSuite, "test of random alloc/free", testRandomAlloc) == NULL) ||
             (CU_add_test(pSuite, "test of pmclose()", testPmclose) == NULL) ||
             (CU_add_test(pSuite, "test of re-open", testReopen) == NULL) ||
-            (CU_add_test(pSuite, "test of pmfree()", testPmfree) == NULL) ||
             (CU_add_test(pSuite, "test of multi pmfree()", testMultiPmfree) == NULL) ||
             (CU_add_test(pSuite, "test of re-close", testReclose) == NULL))
     {

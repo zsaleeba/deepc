@@ -9,6 +9,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <assert.h>
 
 #include "persmem.h"
 #include "persmem_internal.h"
@@ -225,7 +226,14 @@ void pmfree(PersMem *pm, void *mem)
 {
     /* Free the block from the alloc map. */
     size_t offset = mem - pm->c->mapAddr;
-    unsigned level = persmemAllocMapFindLevel(pm->c->allocMap, offset);
+    assert(offset < pm->c->mapSize);
+
+    int level = persmemAllocMapFindLevel(pm->c->allocMap, offset);
+    assert(level >= 0);
+
+    size_t index = offset >> (level + PERSMEM_MIN_ALLOC_BITSIZE);
+    assert(index < ((size_t)1 << (pm->c->mapLevel + 1)));
+
     persmemAllocMapSet(pm->c->allocMap, level, index, false);
 
     /* Add it to the free list. */
@@ -277,16 +285,17 @@ void *pmrealloc(PersMem *pm, void *mem, size_t size)
 
     /* How big is the old memory block? */
     size_t index = mem - pm->c->mapAddr;
-    unsigned oldLevel = persmemAllocMapFindLevel(pm->c->allocMap, index);
+    int oldLevel = persmemAllocMapFindLevel(pm->c->allocMap, index);
+    assert(oldLevel >= 0);
 
     /* What size do we need to allocate? */
     unsigned newLevel = persmemFitToLevel(size);
 
     /* If it still fits in the same block size just leave it alone. */
-    if (oldLevel == newLevel)
+    if ((unsigned)oldLevel == newLevel)
         return mem;
 
-    if (newLevel > oldLevel)
+    if (newLevel > (unsigned)oldLevel)
     {
         /* Increasing the allocation - locate the new block and copy the old data across. */
         oldSize = ((size_t)1) << oldLevel;
@@ -303,8 +312,8 @@ void *pmrealloc(PersMem *pm, void *mem, size_t size)
     else
     {
         /* Reducing the allocation - split the block as many times as necessary. */
-        size_t oldLevelOffset = (mem - pm->c->mapAddr) >> (oldLevel + PERSMEM_INITIAL_LEVEL);
-        size_t newLevelOffset = (mem - pm->c->mapAddr) >> (newLevel + PERSMEM_INITIAL_LEVEL);;
+        size_t oldLevelOffset = (mem - pm->c->mapAddr) >> (oldLevel + PERSMEM_MIN_ALLOC_BITSIZE);
+        size_t newLevelOffset = (mem - pm->c->mapAddr) >> (newLevel + PERSMEM_MIN_ALLOC_BITSIZE);;
 
         /* Mark it as unallocated in the alloc map at the old level. */
         persmemAllocMapSet(pm->c->allocMap, oldLevel, oldLevelOffset, false);

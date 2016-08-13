@@ -115,8 +115,14 @@ void persmemAllocMapSet(uint32_t *map, unsigned level, size_t index, bool alloca
     size_t wordOffset = mapOffset >> 5;     /* 2^5 = 32 bits to a uint32_t in the bitmap. */
     size_t bitOffset = mapOffset & 0x1f;
 
-    uint32_t maskedWord = map[wordOffset] & ~(1 << bitOffset);
-    map[wordOffset] = maskedWord | (allocated << bitOffset);
+    if (allocated)
+    {
+        map[wordOffset] |= (1 << bitOffset);
+    }
+    else
+    {
+        map[wordOffset] &= ~(1 << bitOffset);        
+    }
 }
 
 
@@ -137,12 +143,12 @@ void persmemAllocMapSet(uint32_t *map, unsigned level, size_t index, bool alloca
  *                             0 = the lowest level, ie. the smallest block size
  */
 
-unsigned persmemAllocMapFindLevel(uint32_t *map, size_t offset)
+int persmemAllocMapFindLevel(uint32_t *map, size_t offset)
 {
     int level;
 
     size_t levelOffset = offset >> PERSMEM_MIN_ALLOC_BITSIZE;
-    int setBit = ffs(levelOffset);
+    int setBit = ffs(levelOffset) - 1;
     size_t index = levelOffset >> setBit;
 
     for (level = setBit; level >= 0; level--)
@@ -189,4 +195,47 @@ unsigned persmemAllocMapGetBlockAllocLevel(unsigned level)
     {
         return 0;
     }
+}
+
+
+/*
+ * NAME:        persmemAllocMapBlockInfo
+ * ACTION:      Get a list of all the allocated blocks and their sizes.
+ * PARAMETERS:  PersMem *pm - the pool to use.
+ *              PersMemBlockInfo *blocks - where to put the allocated blocks 
+ *                  we find.
+ *              size_t *numBlocks - put the number of entries in "blocks" here. 
+ *                  Will contain the number of used blocks on completion.
+ */
+
+void persmemAllocMapBlockInfo(PersMem *pm, PersMemBlockInfo *blocks, size_t *numBlocks)
+{
+    uint32_t *map = pm->c->allocMap;
+    unsigned mapLevel = pm->c->mapLevel;
+    size_t maxBlock = *numBlocks;
+    size_t block = 0;
+    int level;
+    size_t index;
+    
+    /* Go through the map level by level. */
+    for (level = mapLevel; level >= 0; level--)
+    {
+        /* For each level go through all the allocations on this level. */
+        unsigned indicesOnThisLevel = 1 << (mapLevel-level);
+        for (index = 0; index < indicesOnThisLevel; index++)
+        {
+            if (persmemAllocMapGet(map, level, index))
+            {
+                if (block >= maxBlock)
+                    return;
+                
+                /* Output an allocation to the blocks list. */
+                blocks[block].size = PERSMEM_LEVEL_BLOCK_BYTES(level);
+                blocks[block].mem = pm->c->mapAddr + index * blocks[block].size;
+                block++;
+            }
+        }
+    }
+    
+    *numBlocks = block;
 }
