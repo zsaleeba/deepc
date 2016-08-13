@@ -57,8 +57,6 @@ void testPmopen()
     CU_ASSERT_FATAL(pm != NULL);
     CU_ASSERT(pm->wasCreated);
     CU_ASSERT(pm->masterStruct != NULL);
-
-    showAllocMap();
 }
 
 
@@ -73,10 +71,6 @@ void testPmmalloc()
     struct MasterStruct *ms = pm->masterStruct;
     ms->a = 42;
     ms->b = mem;
-    
-    printf("block is at %p\n", mem);
-    
-    showAllocMap();
 }
 
 
@@ -91,8 +85,6 @@ void testMultiPmmalloc()
         ms->multi[i] = pmmalloc(pm, MULTI_PMMALLOC_ALLOC_SIZE);
         CU_ASSERT(ms->multi[i] != NULL);
     }
-    
-    showAllocMap();
 }
 
 
@@ -122,8 +114,6 @@ void testPmfree()
     struct MasterStruct *ms = pm->masterStruct;
     pmfree(pm, ms->b);
     ms->b = NULL;
-    
-    showAllocMap();
 }
 
 
@@ -218,11 +208,11 @@ int main()
     /* add the tests to the suite */
     if ((CU_add_test(pSuite, "test of pmopen()", testPmopen) == NULL) ||
             (CU_add_test(pSuite, "test of pmmalloc()", testPmmalloc) == NULL) ||
-            (CU_add_test(pSuite, "test of pmfree()", testPmfree) == NULL) ||
             (CU_add_test(pSuite, "test of multiple pmmalloc()", testMultiPmmalloc) == NULL) ||
             (CU_add_test(pSuite, "test of random alloc/free", testRandomAlloc) == NULL) ||
             (CU_add_test(pSuite, "test of pmclose()", testPmclose) == NULL) ||
             (CU_add_test(pSuite, "test of re-open", testReopen) == NULL) ||
+            (CU_add_test(pSuite, "test of pmfree()", testPmfree) == NULL) ||
             (CU_add_test(pSuite, "test of multi pmfree()", testMultiPmfree) == NULL) ||
             (CU_add_test(pSuite, "test of re-close", testReclose) == NULL))
     {
