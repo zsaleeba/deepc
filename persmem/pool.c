@@ -178,33 +178,27 @@ bool persmemPoolResize(PersMem *pm, unsigned newLevel)
     pm->c->mapSize = newSize;
 
     /* Resize the alloc map. */
-    pmfree(pm, pm->c->allocMap);
-
     void *newAllocMap = persmemAllocBlockFromFreeList(pm, newAllocMapLevel);
     pm->c->allocMap = newAllocMap;
-    if (newAllocMap != oldAllocMap)
+
+    /* It's not at the same location - we'll have to copy the old one across and clear any new space. */
+    if (newAllocMapSize > oldAllocMapSize)
     {
-        /* It's not at the same location - we'll have to copy the old one across and clear any new space. */
-        if (newAllocMapSize > oldAllocMapSize)
-        {
-            /* Expanded - copy and clear. */
-            memcpy(newAllocMap, oldAllocMap, oldAllocMapSize);
-            memset(newAllocMap + oldAllocMapSize, 0, newAllocMapSize - oldAllocMapSize);
-        }
-        else
-        {
-            /* Contracted - copy part. */
-            memcpy(newAllocMap, oldAllocMap, newAllocMapSize);
-        }
-    }
-    else if (newAllocMapSize > oldAllocMapSize)
-    {
-        /* Expanded in place. Just clear the end. */
+        /* Expanded - copy and clear. */
+        memcpy(newAllocMap, oldAllocMap, oldAllocMapSize);
         memset(newAllocMap + oldAllocMapSize, 0, newAllocMapSize - oldAllocMapSize);
+    }
+    else
+    {
+        /* Contracted - copy part. */
+        memcpy(newAllocMap, oldAllocMap, newAllocMapSize);
     }
 
     /* Mark the new alloc map's space as allocated in the alloc map. Self-referential? You know it. */
     persmemAllocMarkInAllocMap(pm, newAllocMap, newAllocMapLevel);
+
+    /* Free the old alloc map. */
+    pmfree(pm, oldAllocMap);
 
     return true;
 }

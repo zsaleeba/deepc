@@ -84,6 +84,7 @@ size_t persmemRoundUpPowerOf2(size_t i);
 void *persmemAllocBlockFromFreeList(PersMem *pm, unsigned needLevel);
 void  persmemAllocMarkInAllocMap(PersMem *pm, void *mem, unsigned level);
 void *persmemAllocBlock(PersMem *pm, unsigned needLevel);
+bool  persmemAllocPossible(PersMem *pm, unsigned level);
 
 /* pool.c - memory pool. */
 bool   persmemPoolInit(PersMem *pm, unsigned newLevel, size_t masterStructSize);

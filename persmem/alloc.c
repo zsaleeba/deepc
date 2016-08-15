@@ -127,3 +127,26 @@ void persmemFreeBlock(PersMem *pm, unsigned level, size_t offset)
     void  *mem = PERSMEM_MEM_FROM_LEVEL_OFFSET(pm, level, offset);
     persmemFreeListInsert(&pm->c->freeList[level], mem);
 }
+
+
+/*
+ * NAME:        persmemAllocPossible
+ * ACTION:      Checks if it's possible to allocate a specific sized block
+ *              of memory.
+ * PARAMETERS:  PersMem *pm - the PersMem to use.
+ *              unsigned needLevel - the level to allocate at.
+ * RETURNS:     bool - true if it's possible to allocate the block.
+ */
+
+bool persmemAllocPossible(PersMem *pm, unsigned level)
+{
+    unsigned i;
+
+    for (i = level; i < pm->c->mapLevel; i++)
+    {
+        if (pm->c->freeList[i].size > 0)
+            return true;
+    }
+
+    return false;
+}

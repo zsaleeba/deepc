@@ -191,13 +191,14 @@ void *pmmalloc(PersMem *pm, size_t size)
         return mem;
 
     /* It's not possible to allocate from the current store. Increase the size of the pool. */
-    if (needLevel >= pm->c->mapLevel)
+    unsigned needAllocMapLevel = persmemAllocMapGetBlockAllocLevel(needLevel + 1);
+    if (needLevel > pm->c->mapLevel || !persmemAllocPossible(pm, needAllocMapLevel))
     {
         /*
          * It's a big new allocation.
          * We need enough room for the existing data + the new alloc map + the new allocation. 
          */
-        allocLevel = needLevel + 2; 
+        allocLevel = needLevel + 2;
     }
     else
     {
@@ -210,7 +211,7 @@ void *pmmalloc(PersMem *pm, size_t size)
         return NULL;
 
     /* Now try again to allocate it. */
-    return persmemAllocBlock(pm, allocLevel);
+    return persmemAllocBlock(pm, needLevel);
 }
 
 
@@ -284,8 +285,8 @@ void *pmrealloc(PersMem *pm, void *mem, size_t size)
         return pmmalloc(pm, size);
 
     /* How big is the old memory block? */
-    size_t index = mem - pm->c->mapAddr;
-    int oldLevel = persmemAllocMapFindLevel(pm->c->allocMap, index);
+    size_t offset = mem - pm->c->mapAddr;
+    int oldLevel = persmemAllocMapFindLevel(pm->c->allocMap, offset);
     assert(oldLevel >= 0);
 
     /* What size do we need to allocate? */
