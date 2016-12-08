@@ -1,0 +1,472 @@
+//
+// Lexical elements.
+//
+
+token:
+    keyword 
+    identiﬁer 
+    constant 
+    string-literal 
+    punctuator
+
+preprocessing-token: 
+    header-name 
+    identiﬁer 
+    pp-number 
+    character-constant 
+    string-literal 
+    punctuator 
+    each non-white-space character that cannot be one of the above
+
+
+//
+// Keywords.
+//
+
+keyword: 
+    auto
+    break 
+    case 
+    char 
+    const 
+    continue 
+    default 
+    do 
+    double 
+    else 
+    enum 
+    extern 
+    float 
+    for 
+    goto
+    if 
+    inline 
+    int 
+    long 
+    register 
+    restrict 
+    return 
+    short 
+    signed 
+    sizeof 
+    static 
+    struct 
+    switch 
+    typedef 
+    union
+    unsigned 
+    void 
+    volatile 
+    while 
+    _Alignas 
+    _Alignof 
+    _Atomic 
+    _Bool 
+    _Complex 
+    _Generic 
+    _Imaginary 
+    _Noreturn 
+    _Static_assert 
+    _Thread_local
+
+
+//
+// Identiﬁers.
+//
+
+identiﬁer: 
+    identiﬁer-nondigit 
+    identiﬁer identiﬁer-nondigit 
+    identiﬁer digit
+
+identiﬁer-nondigit: 
+    nondigit 
+    universal-character-name 
+    other implementation-deﬁned characters
+
+nondigit:
+    _
+    a
+    b
+    c
+    d
+    e
+    f
+    g
+    h
+    i
+    j
+    k
+    l
+    m
+    n
+    o
+    p
+    q
+    r
+    s
+    t
+    u
+    v
+    w
+    x
+    y
+    z
+    A
+    B
+    C
+    D
+    E
+    F
+    G
+    H
+    I
+    J
+    K
+    L
+    M
+    N
+    O
+    P
+    Q
+    R
+    S
+    T
+    U
+    V
+    W
+    X
+    Y
+    Z
+
+digit:
+    0
+    1
+    2
+    3
+    4
+    5
+    6
+    7
+    8
+    9
+
+
+//
+// Universal character names.
+//
+
+universal-character-name: 
+    \u hex-quad
+    \U hex-quad hex-quad
+
+hex-quad: 
+    hexadecimal-digit hexadecimal-digit hexadecimal-digit hexadecimal-digit
+
+
+//
+// Constants.
+//
+
+constant: 
+    integer-constant
+    ﬂoating-constant
+    enumeration-constant
+    character-constant
+
+integer-constant: 
+    decimal-constant [integer-sufﬁx] 
+    octal-constant [integer-sufﬁx]
+    hexadecimal-constant [integer-sufﬁx]
+
+decimal-constant: 
+    nonzero-digit 
+    decimal-constant digit
+
+octal-constant: 
+    0
+    octal-constant octal-digit
+
+hexadecimal-constant: 
+    hexadecimal-preﬁx hexadecimal-digit
+    hexadecimal-constant hexadecimal-digit
+
+hexadecimal-preﬁx:
+    0x
+    0X
+
+nonzero-digit: 
+    1
+    2
+    3
+    4
+    5
+    6
+    7
+    8
+    9
+
+octal-digit: 
+    0
+    1
+    2
+    3
+    4
+    5
+    6
+    7
+
+hexadecimal-digit: 
+    0
+    1
+    2
+    3
+    4
+    5
+    6
+    7
+    8
+    9
+    a
+    b
+    c
+    d
+    e
+    f
+    A
+    B
+    C
+    D
+    E
+    F
+
+integer-sufﬁx: 
+    unsigned-sufﬁx [long-sufﬁx]
+    unsigned-sufﬁx long-long-sufﬁx
+    long-sufﬁx [unsigned-sufﬁx]
+    long-long-sufﬁx [unsigned-sufﬁx]
+
+unsigned-sufﬁx:
+    u
+    U
+
+long-sufﬁx: 
+    l
+    L
+
+long-long-sufﬁx: 
+    ll
+    LL
+
+ﬂoating-constant: 
+    decimal-ﬂoating-constant
+    hexadecimal-ﬂoating-constant
+
+decimal-ﬂoating-constant: 
+    fractional-constant [exponent-part] [ﬂoating-sufﬁx]
+    digit-sequence exponent-part [ﬂoating-sufﬁx]
+
+hexadecimal-ﬂoating-constant: 
+    hexadecimal-preﬁx hexadecimal-fractional-constant binary-exponent-part [ﬂoating-sufﬁx]
+    hexadecimal-preﬁx hexadecimal-digit-sequence binary-exponent-part [ﬂoating-sufﬁx]
+
+fractional-constant: 
+    [digit-sequence] . digit-sequence
+    digit-sequence .
+
+exponent-part: 
+    e [sign] digit-sequence 
+    E [sign] digit-sequence
+
+sign:
+    +
+    -
+
+digit-sequence: 
+    digit digit-sequence 
+    digit
+
+hexadecimal-fractional-constant: 
+    [hexadecimal-digit-sequence] . hexadecimal-digit-sequence 
+    hexadecimal-digit-sequence .
+
+binary-exponent-part: 
+    p [sign] digit-sequence 
+    P [sign] digit-sequence
+
+hexadecimal-digit-sequence: 
+    hexadecimal-digit 
+    hexadecimal-digit-sequence hexadecimal-digit
+
+ﬂoating-sufﬁx: 
+    f
+    l
+    F
+    L
+
+enumeration-constant: 
+    identiﬁer
+
+character-constant:
+    ' c-char-sequence ' 
+    L' c-char-sequence ' 
+    u' c-char-sequence ' 
+    U' c-char-sequence '
+
+c-char-sequence: 
+    c-char 
+    c-char-sequence c-char
+
+c-char: 
+    any member of the source character set except the single-quote ', backslash \, or new-line character 
+    escape-sequence
+
+escape-sequence: 
+    simple-escape-sequence 
+    octal-escape-sequence 
+    hexadecimal-escape-sequence 
+    universal-character-name
+
+simple-escape-sequence: 
+    \' 
+    \" 
+    \? 
+    \\ 
+    \a 
+    \b 
+    \f 
+    \n 
+    \r 
+    \t 
+    \v
+
+octal-escape-sequence: 
+    \ octal-digit 
+    \ octal-digit octal-digit 
+    \ octal-digit octal-digit octal-digit
+
+hexadecimal-escape-sequence: 
+    \x hexadecimal-digit 
+    hexadecimal-escape-sequence hexadecimal-digit
+
+
+//
+// String literals.
+//
+
+string-literal: 
+    [encoding-preﬁx] " [s-char-sequence] "
+
+encoding-preﬁx: 
+    u8 
+    u 
+    U 
+    L
+
+s-char-sequence: 
+    s-char 
+    s-char-sequence s-char
+
+s-char: 
+    any member of the source character set except the double-quote ", backslash \, or new-line character 
+    escape-sequence
+
+
+//
+// Punctuators.
+//
+
+punctuator: 
+    [ 
+    ] 
+    ( 
+    ) 
+    { 
+    } 
+    . 
+    -> 
+    ++ 
+    -- 
+    & 
+    * 
+    + 
+    - 
+    ~ 
+    ! 
+    / 
+    % 
+    << 
+    >> 
+    < 
+    > 
+    <= 
+    >= 
+    == 
+    != 
+    ^ 
+    | 
+    && 
+    || 
+    ? 
+    : 
+    ; 
+    ... 
+    = 
+    *= 
+    /= 
+    %= 
+    += 
+    -= 
+    <<= 
+    >>= 
+    &= 
+    ^= 
+    |= 
+    , 
+    # 
+    ## 
+    <: 
+    :> 
+    <% 
+    %> 
+    %: 
+    %:%:
+
+
+//
+// Header names.
+//
+
+header-name: 
+    < h-char-sequence > 
+    " q-char-sequence "
+
+h-char-sequence: 
+    h-char 
+    h-char-sequence h-char
+
+h-char: 
+    any member of the source character set except the new-line character and >
+
+q-char-sequence: 
+    q-char 
+    q-char-sequence q-char
+
+q-char: 
+    any member of the source character set except the new-line character and "
+
+
+//
+// Preprocessing numbers.
+//
+
+pp-number: 
+    digit 
+    . digit
+    pp-number digit 
+    pp-number identiﬁer-nondigit 
+    pp-number e sign 
+    pp-number E sign 
+    pp-number p sign 
+    pp-number P sign 
+    pp-number .
