@@ -1,2 +1,2 @@
 TEMPLATE = subdirs
-SUBDIRS = persmem libdeepcc deepc
+SUBDIRS = persmem dcparsergen libdeepcc deepc

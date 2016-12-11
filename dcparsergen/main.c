@@ -14,14 +14,14 @@ int main(int argc, char **argv)
     // Check args.
     if (argc != 3)
     {
-        fprintf(stderr, "Format: %s <filename.lexer> <filename.grammar>\n");
+        fprintf(stderr, "Format: %s <lexical.pgen> <syntax.pgen>\n", argv[0]);
         exit(EXIT_FAILURE);
     }
     
     // Invoke the lexer generator.
     LexerGen lgen;
     LexerGenInit(&lgen);
-    if (!LexerGenReadDefinition(&lgen, argv[1]))
+    if (!LexerGenReadGrammar(&lgen, argv[1]))
     {
         fprintf(stderr, "can't read %s: %s\n", argv[1], LexerGenGetError(&lgen));
         exit(EXIT_FAILURE);
@@ -30,7 +30,7 @@ int main(int argc, char **argv)
     // Invoke the parser generator.
     ParserGen pgen;
     ParserGenInit(&pgen);
-    if (!ParserGenReadDefinition(&pgen, argv[2]))
+    if (!ParserGenReadGrammar(&pgen, argv[2]))
     {
         fprintf(stderr, "can't read %s: %s\n", argv[2], ParserGenGetError(&pgen));
         LexerGenClose(&lgen);

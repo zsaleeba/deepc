@@ -1,8 +1,8 @@
 BINDIR  ?= ../bin
-OBJDIR  ?= ../obj
-DCOBJDIR=  $(OBJDIR)/deepc/deepc
-DCCOBJDIR= $(OBJDIR)/deepc/libdeepcc
-PMOBJDIR=  $(OBJDIR)/deepc/persmem
+BUILD_DIR  ?= ../build
+DCOBJDIR=  $(BUILD_DIR)/deepc/deepc
+DCCOBJDIR= $(BUILD_DIR)/deepc/libdeepcc
+PMOBJDIR=  $(BUILD_DIR)/deepc/persmem
 
 CFLAGS += -g -W -Wall -Wextra
 

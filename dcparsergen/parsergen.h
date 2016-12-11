@@ -12,9 +12,9 @@ typedef struct
 } ParserGen;
 
 // Prototypes.
-void ParserGenInit(LexerGen *lgen);
-void ParserGenClose(LexerGen *lgen);
-bool ParserGenReadGrammar(LexerGen *lgen, const char *fileName);
-const char *ParserGenGetError(LexerGen *lgen);
+void ParserGenInit(ParserGen *lgen);
+void ParserGenClose(ParserGen *lgen);
+bool ParserGenReadGrammar(ParserGen *lgen, const char *fileName);
+const char *ParserGenGetError(ParserGen *lgen);
 
 #endif // PARSERGEN_H

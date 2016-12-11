@@ -1,6 +1,6 @@
 BINDIR  ?= ../bin
-OBJDIR  ?= ../obj
-DCCOBJDIR=  $(OBJDIR)/deepc/libdeepcc
+BUILD_DIR  ?= ../build
+DCCOBJDIR=  $(BUILD_DIR)/deepc/libdeepcc
 
 CFLAGS += -g -W -Wall -Wextra
 

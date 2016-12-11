@@ -1,6 +1,6 @@
 BINDIR  ?= ../../bin
-OBJDIR  ?= ../../obj
-PMOBJDIR=  $(OBJDIR)/deepc/persmem
+BUILD_DIR  ?= ../../build
+PMOBJDIR=  $(BUILD_DIR)/deepc/persmem
 PMTESTOBJDIR=  $(PMOBJDIR)/test
 
 CFLAGS += -g -W -Wall -Wextra -I..
