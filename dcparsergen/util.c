@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <string.h>
+#include <ctype.h>
 
 #include "util.h"
 
@@ -39,6 +40,13 @@ bool ReadFile(char **content, char **errMsg, const char *fileName)
         return false;
     }
     
+    if (lseek(fd, 0, SEEK_SET) == -1)
+    {
+        AllocSprintf(errMsg, "can't return to start of '%s': %s", fileName, strerror(errno));
+        close(fd);
+        return false;
+    }
+    
     // Allocate space for the result.
     *content = calloc(fileSize+1, sizeof(char));
     if (*content == NULL)
@@ -49,17 +57,60 @@ bool ReadFile(char **content, char **errMsg, const char *fileName)
     }
     
     // Read the file.
-    if (read(fd, *content, fileSize) != fileSize)
+    off_t bytesRead = 0;
+    while (bytesRead < fileSize)
     {
-        AllocSprintf(errMsg, "can't read '%s': %s", fileName, strerror(errno));
-        free(*content);
-        *content = NULL;
-        close(fd);
-        return false;
+        ssize_t thisRead = read(fd, *content, fileSize);
+        if (thisRead == -1)
+        {
+            AllocSprintf(errMsg, "can't read '%s': %s", fileName, strerror(errno));
+            free(*content);
+            *content = NULL;
+            close(fd);
+            return false;
+        }
+        
+        bytesRead += thisRead;
     }
     
     // Clean up.
     close(fd);
+    return true;
+}
+
+
+//
+// Reads a line from a string. Uses the nextLine to iterate along the string.
+// Will modify the original string. This is ok when working from a string
+// read using ReadFile().
+// Set nextLine to point to the start of the string at the start.
+//
+
+bool ReadLine(char **line, char **nextLine)
+{
+    // Are we at the end?
+    if (**nextLine == 0)
+    {
+        *line = NULL;
+        return false;
+    }
+    
+    // Find the end of the line.
+    char *lfPos = index(*nextLine, '\n');
+    if (lfPos == NULL)
+    {
+        // We're on the last line - just return the last segment.
+        *line = *nextLine;
+        *nextLine += strlen(*nextLine);
+    }
+    else
+    {
+        // Found a line feed - null terminate and return this line.
+        *line = *nextLine;
+        *lfPos = 0;
+        *nextLine = lfPos+1;
+    }
+    
     return true;
 }
 
@@ -96,5 +147,25 @@ void FreeStr(char **str)
     {
         free(*str);
         *str = NULL;
+    }
+}
+
+
+//
+// Strip trailing whitespace from a string.
+//
+
+void StringStripEnd(char *str)
+{
+    ssize_t pos = strlen(str);
+    if (pos > 0)
+    {
+        pos--;
+    }
+    
+    while (pos >= 0 && isspace(str[pos]))
+    {
+        str[pos] = 0;
+        pos--;
     }
 }

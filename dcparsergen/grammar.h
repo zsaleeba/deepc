@@ -63,7 +63,9 @@ struct _GrammarItem
 
 typedef struct 
 {
-    char *src;      // The source code.
+    const char *fileName; // The source file name.
+    char *src;            // The source code.
+    int   lineNo;         // The current line number.
     
     GrammarDefinition *defList;
     char *errMsg;
@@ -77,6 +79,9 @@ bool GrammarRead(Grammar *grammar, const char *fileName);
 const char *GrammarGetError(Grammar *grammar);
 
 // Internal prototypes.
+bool GrammarParseDefinition(Grammar *grammar, char *line);
+bool GrammarParseOption(Grammar *grammar, char *line);
+bool GrammarParseItem(Grammar *grammar, char *str);
 void GrammarFreeDefinitions(GrammarDefinition *def);
 void GrammarFreeOptions(GrammarOption *opt);
 void GrammarFreeItems(GrammarItem *item);
