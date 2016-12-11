@@ -187,7 +187,7 @@ void *pmmalloc(PersMem *pm, size_t size)
     /* Try to allocate it from the current free lists. */
     unsigned needLevel = persmemFitToLevel(size);
     mem = persmemAllocBlock(pm, needLevel);
-    if (mem)
+    if (mem != NULL)
         return mem;
 
     /* It's not possible to allocate from the current store. Increase the size of the pool. */

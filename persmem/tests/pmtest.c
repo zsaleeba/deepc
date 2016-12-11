@@ -219,7 +219,7 @@ void testExpand()
     unsigned origLevel = pm->c->mapLevel;
     size_t bigBlock = PERSMEM_LEVEL_BLOCK_BYTES(origLevel);
     void *bigMem = pmmalloc(pm, bigBlock);
-    CU_ASSERT(bigMem != NULL);
+    CU_ASSERT_FATAL(bigMem != NULL);
     CU_ASSERT(pm->c->mapLevel == origLevel+1);
 
     pmfree(pm, bigMem);
@@ -231,10 +231,20 @@ void testRealloc()
     struct MasterStruct *ms = pm->masterStruct;
     ms->b = pmrealloc(pm, ms->b, 64);
     CU_ASSERT(ms->b != NULL);
-    ms->b = pmrealloc(pm, ms->b, 32);
+    void *mem = pmrealloc(pm, ms->b, 32);
     CU_ASSERT(ms->b == mem);
-    ms->b = pmrealloc(pm, ms->b, 4096);
+    ms->b = mem;
+    void *mem2 = pmrealloc(pm, ms->b, 4096);
     CU_ASSERT(ms->b != mem2);
+    ms->b = mem2;
+}
+
+
+void testReallocNull()
+{
+    void *mem = pmrealloc(pm, NULL, 32);
+    CU_ASSERT(mem != NULL);
+    pmfree(pm, mem);
 }
 
 
@@ -269,9 +279,10 @@ int main()
             (CU_add_test(pSuite, "test of random alloc/free", testRandomAlloc) == NULL) ||
             (CU_add_test(pSuite, "test of pmclose()", testPmclose) == NULL) ||
             (CU_add_test(pSuite, "test of re-open", testReopen) == NULL) ||
-            (CU_add_test(pSuite, "test of pmfree()", testPmfree) == NULL) ||
             (CU_add_test(pSuite, "test of expand", testExpand) == NULL) ||
             (CU_add_test(pSuite, "test of pmrealloc()", testRealloc) == NULL) ||
+            (CU_add_test(pSuite, "test of pmrealloc() NULL", testReallocNull) == NULL) ||
+            (CU_add_test(pSuite, "test of pmfree()", testPmfree) == NULL) ||
             (CU_add_test(pSuite, "test of multi pmfree()", testMultiPmfree) == NULL) ||
             (CU_add_test(pSuite, "test of re-close", testReclose) == NULL))
     {
