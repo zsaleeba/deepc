@@ -23,6 +23,7 @@ struct _GrammarDefinition
     GrammarDefinition *nextDefinition;
     char              *name;
     GrammarOption     *firstOption;
+    GrammarOption     *lastOption;
 };
 
 
@@ -37,6 +38,7 @@ struct _GrammarOption
 {
     GrammarOption *nextOption;
     GrammarItem   *firstItem;
+    GrammarItem   *lastItem;
 };
 
 
@@ -64,10 +66,10 @@ struct _GrammarItem
 typedef struct 
 {
     const char *fileName; // The source file name.
-    char *src;            // The source code.
     int   lineNo;         // The current line number.
     
-    GrammarDefinition *defList;
+    GrammarDefinition *firstDef;
+    GrammarDefinition *lastDef;
     char *errMsg;
 } Grammar;
 
@@ -81,7 +83,11 @@ const char *GrammarGetError(Grammar *grammar);
 // Internal prototypes.
 bool GrammarParseDefinition(Grammar *grammar, char *line);
 bool GrammarParseOption(Grammar *grammar, char *line);
-bool GrammarParseItem(Grammar *grammar, char *str);
+bool GrammarParseItem(Grammar *grammar, GrammarOption *option, char **pos, bool *err);
+char *GrammarParseIdentifier(char **pos);
+bool GrammarParseString(Grammar *grammar, GrammarItem *item, char **pos);
+bool GrammarParseCharacter(char **pos, int *ch);
+bool GrammarParseCharSet(Grammar *grammar, GrammarItem *item, char **pos);
 void GrammarFreeDefinitions(GrammarDefinition *def);
 void GrammarFreeOptions(GrammarOption *opt);
 void GrammarFreeItems(GrammarItem *item);

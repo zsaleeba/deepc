@@ -169,3 +169,16 @@ void StringStripEnd(char *str)
         pos--;
     }
 }
+
+
+//
+// Moves a pointer to a string past any whitespace characters.
+//
+
+void SkipWhitespace(char **pos)
+{
+    while (isspace(**pos))
+    {
+        (*pos)++;
+    }
+}

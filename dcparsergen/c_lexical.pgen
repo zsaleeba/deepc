@@ -7,14 +7,14 @@
 
 token:
     keyword 
-    identiﬁer 
+    identifier
     constant 
     string-literal 
     punctuator
 
 preprocessing-token: 
     header-name 
-    identiﬁer 
+    identifier
     pp-number 
     character-constant 
     string-literal 
@@ -233,8 +233,8 @@ escape-sequence:
     hexadecimal-escape-sequence 
     universal-character-name
 
-simple-escape-sequence: 
-    '\\\'' 
+simple-escape-sequence::
+    '\\\''
     '\\"'
     '\\?'
     '\\\\'
@@ -246,12 +246,12 @@ simple-escape-sequence:
     '\\t'
     '\\v'
 
-octal-escape-sequence: 
-    '\\' octal-digit 
+octal-escape-sequence::
+    '\\' octal-digit
     '\\' octal-digit octal-digit 
     '\\' octal-digit octal-digit octal-digit
 
-hexadecimal-escape-sequence: 
+hexadecimal-escape-sequence::
     '\\x' hexadecimal-digit 
     hexadecimal-escape-sequence hexadecimal-digit
 
