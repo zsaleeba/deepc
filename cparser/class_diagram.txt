@@ -1,0 +1,25 @@
+CParser namespace:
+
+    CParser(TokenStream) inherits Parser
+
+        PrimaryExpressionContext inherits ParserRuleContext
+        *Context inherits ParserRuleContext
+
+
+    CListener inherits ParseTreeListener (pure)
+
+    CBaseListener inherits CListener
+
+    CLexer(CharStream) inherits Lexer
+
+
+antlr4 namespace:
+
+    Parser(TokenStream) inherits Recognizer
+        addParseListener()
+
+    Recognizer inherits IRecogniser
+        addErrorListener()
+
+    IRecognizer
+
