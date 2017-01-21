@@ -2,7 +2,7 @@ BINDIR  ?= ../bin
 BUILD_DIR  ?= ../build
 DCCOBJDIR=  $(BUILD_DIR)/deepc/cparser
 
-CXXFLAGS += -g -W -Wall -Wextra -I../antlr4_runtime/runtime/src
+CXXFLAGS += -g -std=c++11 -W -Wall -Wextra -I../antlr4_runtime/runtime/src
 
 TARGET	= $(DCCOBJDIR)/cparser.a
 GENSRCS	= CBaseListener.cpp CLexer.cpp CListener.cpp CParser.cpp
@@ -20,7 +20,7 @@ $(DCCOBJDIR)/%.o: $(DCCOBJDIR)/%.cpp
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $@ -c $<
 
 $(DCCOBJDIR)/CBaseListener.cpp: C.g4
-	java -jar $(HOME)/fetch/antlr4-4.5.4-SNAPSHOT.jar -o $(DCCOBJDIR) -Dlanguage=Cpp C.g4
+	java -jar $(HOME)/fetch/antlr-4.6-complete.jar -o $(DCCOBJDIR) -Dlanguage=Cpp C.g4
 
 clean:
 	rm -f $(TARGET) $(OBJS) $(GENFILES)
