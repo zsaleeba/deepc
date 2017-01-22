@@ -2,14 +2,18 @@ BINDIR  ?= ../bin
 BUILD_DIR  ?= ../build
 DCCOBJDIR=  $(BUILD_DIR)/deepc/cparser
 
-CXXFLAGS += -g -std=c++11 -W -Wall -Wextra -I../antlr4_runtime/runtime/src
+CXXFLAGS += -g -std=c++11 -W -Wall -Wextra -Wno-unused-parameter -Wno-unused-but-set-variable -I../antlr4_runtime/runtime/src
 
 TARGET	= $(DCCOBJDIR)/cparser.a
+ORIGSRCS = cparser.cpp
 GENSRCS	= CBaseListener.cpp CLexer.cpp CListener.cpp CParser.cpp
 GENFILES = $(GENSRCS) CBaseListener.h CLexer.h CListener.h CParser.h \
 	C.tokens CLexer.tokens
-SRCS    := $(GENSRCS:%.cpp=$(DCCOBJDIR)/%.cpp)
-OBJS    := $(GENSRCS:%.cpp=$(DCCOBJDIR)/%.o)
+BGENFILES := $(GENFILES:%=$(DCCOBJDIR)/%)
+BGENFILES1 = $(firstword $(BGENFILES))
+BGENFILES_REST = $(wordlist 2,$(words $(BGENFILES)),$(BGENFILES))
+SRCS    := $(ORIGSRCS) $(GENSRCS:%.cpp=$(DCCOBJDIR)/%.cpp)
+OBJS    := $(SRCS:%.cpp=%.o)
 
 all:    $(DCCOBJDIR) $(TARGET)
 
@@ -19,11 +23,14 @@ $(TARGET): $(OBJS)
 $(DCCOBJDIR)/%.o: $(DCCOBJDIR)/%.cpp
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $@ -c $<
 
-$(DCCOBJDIR)/CBaseListener.cpp: C.g4
-	java -jar $(HOME)/fetch/antlr-4.6-complete.jar -o $(DCCOBJDIR) -Dlanguage=Cpp C.g4
+$(BGENFILES1): C.g4
+	java -jar $(HOME)/fetch/antlr-4.6-complete.jar -o $(DCCOBJDIR) -Dlanguage=Cpp $<
+	touch $(BGENFILES_REST)
+
+$(BGENFILES_REST): $(BGENFILES1)
 
 clean:
-	rm -f $(TARGET) $(OBJS) $(GENFILES)
+	rm -f $(TARGET) $(OBJS) $(BGENFILES)
 
 $(DCCOBJDIR):
 	mkdir -p $(DCCOBJDIR)
