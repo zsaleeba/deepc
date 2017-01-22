@@ -7,7 +7,7 @@ PMOBJDIR=  $(BUILD_DIR)/deepc/persmem
 CFLAGS += -g -W -Wall -Wextra
 
 TARGET	= $(BINDIR)/deepc
-SRCS 	= main.c
+SRCS 	= main.cpp
 LIBS    = $(DCCOBJDIR)/libdeepcc.a $(PMOBJDIR)/persmem.a
 OBJS    := $(SRCS:%.c=$(DCOBJDIR)/%.o)
 

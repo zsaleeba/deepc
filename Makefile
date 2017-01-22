@@ -1,6 +1,6 @@
 all clean:
 	@(cd persmem && make $@) && \
-		(cd dcparsergen && make $@) && \
+		(cd cparser && make $@) && \
 		(cd libdeepcc && make $@) && \
 		(cd deepc && make $@)
 
