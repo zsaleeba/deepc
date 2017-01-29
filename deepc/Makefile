@@ -1,23 +1,26 @@
 BINDIR  ?= ../bin
 BUILD_DIR  ?= ../build
 DCOBJDIR=  $(BUILD_DIR)/deepc/deepc
+AROBJDIR= $(BUILD_DIR)/deepc/antlr_runtime
+CPOBJDIR= $(BUILD_DIR)/deepc/cparser
 DCCOBJDIR= $(BUILD_DIR)/deepc/libdeepcc
 PMOBJDIR=  $(BUILD_DIR)/deepc/persmem
 
-CFLAGS += -g -W -Wall -Wextra
+INCLUDES= -I../cparser -I$(CPOBJDIR) -I../antlr4_runtime/runtime/src
+CXXFLAGS += -g -W -Wall -Wextra -std=c++11 $(INCLUDES)
 
 TARGET	= $(BINDIR)/deepc
 SRCS 	= main.cpp
-LIBS    = $(DCCOBJDIR)/libdeepcc.a $(PMOBJDIR)/persmem.a
-OBJS    := $(SRCS:%.c=$(DCOBJDIR)/%.o)
+LIBS    = $(CPOBJDIR)/cparser.a $(DCCOBJDIR)/libdeepcc.a $(PMOBJDIR)/persmem.a $(AROBJDIR)/antlr_runtime.a
+OBJS    := $(SRCS:%.cpp=$(DCOBJDIR)/%.o)
 
 all:    $(DCOBJDIR) $(TARGET)
 
 $(TARGET): $(OBJS) $(LIBS)
-	$(CC) -o $(TARGET) $(CFLAGS) $(OBJS) $(LIBS)
+	$(CXX) -o $(TARGET) $(CXXFLAGS) $(OBJS) $(LIBS)
 
-$(DCOBJDIR)/%.o: %.c
-	$(CC) $(CFLAGS) $(INCLUDES) -o $@ -c $<
+$(DCOBJDIR)/%.o: %.cpp
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $@ -c $<
 
 clean:
 	rm -f $(TARGET) $(OBJS)

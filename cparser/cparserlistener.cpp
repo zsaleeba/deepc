@@ -11,6 +11,10 @@
 #include "cparserlistener.h"
 
 
+CParserListener::CParserListener()
+{
+}
+
 void CParserListener::enterPrimaryExpression(CParser::PrimaryExpressionContext *ctx)
 {
     std::cout << "CParserListener::enterPrimaryExpression()" << std::endl;
@@ -849,4 +853,24 @@ void CParserListener::enterDeclarationList(CParser::DeclarationListContext *ctx)
 void CParserListener::exitDeclarationList(CParser::DeclarationListContext *ctx)
 {
     std::cout << "CParserListener::exitDeclarationList()" << std::endl;
+}
+
+void CParserListener::visitTerminal(antlr4::tree::TerminalNode*)
+{
+    std::cout << "CParserListener::visitTerminal()" << std::endl;
+}
+
+void CParserListener::visitErrorNode(antlr4::tree::ErrorNode*)
+{
+    std::cout << "CParserListener::visitErrorNode()" << std::endl;
+}
+
+void CParserListener::enterEveryRule(antlr4::ParserRuleContext*)
+{
+    std::cout << "CParserListener::enterEveryRule()" << std::endl;
+}
+                 
+void CParserListener::exitEveryRule(antlr4::ParserRuleContext*)
+{
+    std::cout << "CParserListener::exitEveryRule()" << std::endl;
 }

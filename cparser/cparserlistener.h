@@ -269,6 +269,14 @@ public:
   
     void enterDeclarationList(CParser::DeclarationListContext *ctx) override;
     void exitDeclarationList(CParser::DeclarationListContext *ctx) override;    
+    
+    void visitTerminal(antlr4::tree::TerminalNode*) override;
+    
+    void visitErrorNode(antlr4::tree::ErrorNode*) override;
+    
+    void enterEveryRule(antlr4::ParserRuleContext*) override;
+                     
+    void exitEveryRule(antlr4::ParserRuleContext*) override;
 };
 
 #endif // CPARSERLISTENER_H

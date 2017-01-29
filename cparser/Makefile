@@ -1,44 +1,44 @@
 BINDIR  ?= ../bin
 BUILD_DIR  ?= ../build
-DCCOBJDIR=  $(BUILD_DIR)/deepc/cparser
+CPOBJDIR=  $(BUILD_DIR)/deepc/cparser
 
-CXXFLAGS += -g -std=c++11 -W -Wall -Wextra -Wno-unused-parameter -Wno-unused-but-set-variable -I../antlr4_runtime/runtime/src -I$(DCCOBJDIR)
+CXXFLAGS += -g -std=c++11 -W -Wall -Wextra -Wno-unused-parameter -Wno-unused-but-set-variable -I../antlr4_runtime/runtime/src -I$(CPOBJDIR)
 
-TARGET	= $(DCCOBJDIR)/cparser.a
+TARGET	= $(CPOBJDIR)/cparser.a
 ORIGSRCS = ctree.cpp cparserlistener.cpp
 ORIGFILES = $(ORIGSRCS) ctree.h
 GENSRCS	= CBaseListener.cpp CLexer.cpp CListener.cpp CParser.cpp
 GENFILES = $(GENSRCS) CBaseListener.h CLexer.h CListener.h CParser.h \
 	C.tokens CLexer.tokens
-BGENFILES := $(GENFILES:%=$(DCCOBJDIR)/%)
+BGENFILES := $(GENFILES:%=$(CPOBJDIR)/%)
 BGENFILES1 = $(firstword $(BGENFILES))
 BGENFILES_REST = $(wordlist 2,$(words $(BGENFILES)),$(BGENFILES))
-SRCS    := $(ORIGSRCS) $(GENSRCS:%.cpp=$(DCCOBJDIR)/%.cpp)
-OBJS    := $(ORIGSRCS:%.cpp=$(DCCOBJDIR)/%.o) $(GENSRCS:%.cpp=$(DCCOBJDIR)/%.o)
+SRCS    := $(ORIGSRCS) $(GENSRCS:%.cpp=$(CPOBJDIR)/%.cpp)
+OBJS    := $(ORIGSRCS:%.cpp=$(CPOBJDIR)/%.o) $(GENSRCS:%.cpp=$(CPOBJDIR)/%.o)
 
-all:    $(DCCOBJDIR) $(TARGET)
+all:    $(CPOBJDIR) $(TARGET)
 
 $(TARGET): $(OBJS)
 	$(AR) r $(TARGET) $(OBJS)
 
-$(DCCOBJDIR)/%.o: $(DCCOBJDIR)/%.cpp
+$(CPOBJDIR)/%.o: $(CPOBJDIR)/%.cpp
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $@ -c $<
 
-$(DCCOBJDIR)/%.o: %.cpp
+$(CPOBJDIR)/%.o: %.cpp
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $@ -c $<
 
 $(BGENFILES1): C.g4
-	java -jar $(HOME)/fetch/antlr-4.6-complete.jar -o $(DCCOBJDIR) -Dlanguage=Cpp $<
+	java -jar $(HOME)/fetch/antlr-4.6-complete.jar -o $(CPOBJDIR) -Dlanguage=Cpp $<
 	touch $(BGENFILES_REST)
 
 $(BGENFILES_REST): $(BGENFILES1)
 
-$(DCCOBJDIR)/ctree.o: ctree.cpp ctree.h $(DCCOBJDIR)/CBaseListener.h $(DCCOBJDIR)/CLexer.h $(DCCOBJDIR)/CListener.h $(DCCOBJDIR)/CParser.h
+$(CPOBJDIR)/ctree.o: ctree.cpp ctree.h $(CPOBJDIR)/CBaseListener.h $(CPOBJDIR)/CLexer.h $(CPOBJDIR)/CListener.h $(CPOBJDIR)/CParser.h
 
 clean:
 	rm -f $(TARGET) $(OBJS) $(BGENFILES)
 
-$(DCCOBJDIR):
-	mkdir -p $(DCCOBJDIR)
+$(CPOBJDIR):
+	mkdir -p $(CPOBJDIR)
 
 .PHONY:	all clean

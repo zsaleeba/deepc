@@ -1,8 +1,9 @@
 all clean:
-	@(cd persmem && make $@) && \
-		(cd cparser && make $@) && \
-		(cd libdeepcc && make $@) && \
-		(cd deepc && make $@)
+	@(cd persmem && $(MAKE) $@) && \
+		(cd antlr4_runtime/runtime/src && $(MAKE) $@) && \
+		(cd cparser && $(MAKE) $@) && \
+		(cd libdeepcc && $(MAKE) $@) && \
+		(cd deepc && $(MAKE) $@)
 
 count:
 	wc `find . -name *.c; find . -name *.h`

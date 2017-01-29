@@ -4,8 +4,10 @@ CONFIG -= app_bundle
 CONFIG -= qt
 
 unix {
-    INCLUDEPATH += /usr/include
+    INCLUDEPATH += /usr/include /home/zik/build/deepc/cparser
 }
+
+INCLUDEPATH += $$PWD/../antlr4_runtime/runtime/src
 
 SOURCES += main.cpp
 
