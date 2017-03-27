@@ -1,2 +1,7 @@
 TEMPLATE = subdirs
-SUBDIRS = persmem dcparsergen libdeepcc deepc cparser
+SUBDIRS = \
+    cparser \
+    deepcompiler \
+    jemalloc \
+    antlr4_runtime \
+    deepc

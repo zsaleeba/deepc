@@ -8,6 +8,7 @@ unix {
 }
 
 INCLUDEPATH += $$PWD/../antlr4_runtime/runtime/src
+QMAKE_CXXFLAGS += -std=c++11
 
 SOURCES += main.cpp
 
@@ -36,3 +37,6 @@ else:win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../pers
 else:win32:!win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../persmem/release/persmem.lib
 else:win32:!win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../persmem/debug/persmem.lib
 else:unix: PRE_TARGETDEPS += $$OUT_PWD/../persmem/libpersmem.a
+
+HEADERS += \
+    sourcepos.h

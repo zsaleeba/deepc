@@ -1,20 +1,29 @@
-#include <stdio.h>
+#include <iostream>
 #include <stdlib.h>
 #include <unistd.h>
+#include <getopt.h>
+#include <string>
 
 #include "CLexer.h"
 #include "CParser.h"
 #include "antlr4-runtime.h"
-//#include "ANTLRFileStream.h"
-//#include "ConsoleErrorListener.h"
 #include "cparserlistener.h"
 
 
-int main(int, char **)
+static struct option longOptions[] =
 {
-    printf("deepc v0.01\n");
+    {"output-file", required_argument, 0,  0 }
+};
 
-    antlr4::ANTLRFileStream fs("example.c");
+
+//
+// NAME:        compile
+// ACTION:
+//
+
+bool compile(std::string srcFileName)
+{
+    antlr4::ANTLRFileStream fs(srcFileName);
 
     CLexer lexer(&fs);
     antlr4::CommonTokenStream tokens(&lexer);
@@ -26,5 +35,38 @@ int main(int, char **)
     antlr4::tree::ParseTree *parseTree = parser.compilationUnit();
     std::cout << parseTree->toStringTree(&parser) << std::endl;
 
-    return 0;
+    return true;
+}
+
+
+int main(int argc, char **argv)
+{
+    std::cout << "deepc v0.01\n";
+
+    // Gather arguments.
+    int optCh = 0;
+    std::string outFileName;
+
+    while (optCh != -1)
+    {
+        int optionIndex = 0;
+        optCh = getopt_long(argc, argv, "o:", longOptions, &optionIndex);
+        switch (optCh)
+        {
+        case 'o':
+            outFileName = optarg;
+            break;
+        }
+    }
+
+    // Compile source files.
+    while (optind < argc)
+    {
+        if (!compile(argv[optind]))
+            return EXIT_FAILURE;
+
+        optind++;
+    }
+
+    return EXIT_SUCCESS;
 }
