@@ -9,10 +9,24 @@ QT       -= core gui
 TARGET = libdeepcc
 TEMPLATE = lib
 CONFIG += staticlib
+QMAKE_CXXFLAGS += -std=c++11
 
-SOURCES += dcdbfile.c
+unix {
+    INCLUDEPATH += /usr/include
+}
 
-HEADERS += dcdbfile.h
+
+SOURCES += sourcepos.cpp \
+    sourcebag.cpp \
+    sourcespan.cpp \
+    sourcefile.cpp
+
+HEADERS += sourcepos.h \
+    chain.h \
+    sourcebag.h \
+    sourcefile.h \
+    cbtree.h \
+    sourcespan.h
 
 unix {
     target.path = /usr/lib

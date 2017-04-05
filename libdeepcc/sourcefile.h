@@ -16,6 +16,8 @@
 #include <memory>
 #include <mutex>
 
+#include "cbtree.h"
+
 
 namespace DeepC
 {
@@ -32,7 +34,7 @@ namespace DeepC
         size_t len_;
         
         // An index of lines in the source code.
-        //chain<std::string> lines_;
+        cbtree<std::string> lines_;
         
     public:
         // Constructor for the source bag.

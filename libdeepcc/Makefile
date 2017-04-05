@@ -1,25 +1,25 @@
 BINDIR  ?= ../bin
 BUILD_DIR  ?= ../build
-DCCOBJDIR=  $(BUILD_DIR)/deepc/libdeepcc
+DDCOBJDIR=  $(BUILD_DIR)/deepc/libdeepcc
 
 CFLAGS += -g -W -Wall -Wextra
 
-TARGET	= $(DCCOBJDIR)/libdeepcc.a
-SRCS 	= dcdbfile.c
-OBJS    := $(SRCS:%.c=$(DCCOBJDIR)/%.o)
+TARGET	= $(DDCOBJDIR)/libdeepcc.a
+SRCS 	= sourcepos.cpp sourcespan.cpp sourcebag.cpp sourcefile.cpp
+OBJS    := $(SRCS:%.cpp=$(DDCOBJDIR)/%.o)
 
-all:    $(DCCOBJDIR) $(TARGET)
+all:    $(DDCOBJDIR) $(TARGET)
 
 $(TARGET): $(OBJS)
 	$(AR) r $(TARGET) $(OBJS)
 
-$(DCCOBJDIR)/%.o: %.c
-	$(CC) $(CFLAGS) $(INCLUDES) -o $@ -c $<
+$(DDCOBJDIR)/%.o: %.cpp
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $@ -c $<
 
 clean:
 	rm -f $(TARGET) $(OBJS)
 
-$(DCCOBJDIR):
-	mkdir -p $(DCCOBJDIR)
+$(DDCOBJDIR):
+	mkdir -p $(DDCOBJDIR)
 
 .PHONY:	all clean

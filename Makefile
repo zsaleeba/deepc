@@ -1,6 +1,5 @@
 all clean:
 	@(cd persmem && $(MAKE) $@) && \
-		(cd antlr4_runtime/runtime/src && $(MAKE) $@) && \
 		(cd deepcomp && $(MAKE) $@) && \
 		(cd cparser && $(MAKE) $@) && \
 		(cd libdeepcc && $(MAKE) $@) && \

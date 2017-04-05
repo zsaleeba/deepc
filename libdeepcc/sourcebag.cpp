@@ -37,12 +37,16 @@ namespace DeepC
         
         auto found = sources_.find(sourceName);
         if (found != sources_.end())
+        {
             return (*found).second;
+        }
         else
         {
             // Load the file and return it.
             
         }
+        
+        return nullptr;
     }
 
 }

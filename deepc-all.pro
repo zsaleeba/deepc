@@ -1,7 +1,6 @@
 TEMPLATE = subdirs
 SUBDIRS = \
     cparser \
-    deepcompiler \
+    libdeepcc \
     jemalloc \
-    antlr4_runtime \
     deepc
