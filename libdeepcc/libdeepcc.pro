@@ -17,16 +17,21 @@ unix {
 
 
 SOURCES += sourcepos.cpp \
-    sourcebag.cpp \
     sourcespan.cpp \
-    sourcefile.cpp
+    sourcefile.cpp \
+    allsources.cpp \
+    programdb.cpp \
+    programdb.pb.cpp
 
 HEADERS += sourcepos.h \
     chain.h \
-    sourcebag.h \
     sourcefile.h \
     cbtree.h \
-    sourcespan.h
+    sourcespan.h \
+    allsources.h \
+    programdb.h \
+    lmdb++.h \
+    programdb.pb.h
 
 unix {
     target.path = /usr/lib

@@ -28,7 +28,7 @@ int main()
     auto v1 = makeVec(0, 100);
     cb.append(v1, v1->size());
 
-    assert(cb->size() == 100);
+    assert(cb.size() == 100);
 
     for (int i = 0; i < 100; i++)
     {

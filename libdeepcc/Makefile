@@ -2,10 +2,10 @@ BINDIR  ?= ../bin
 BUILD_DIR  ?= ../build
 DDCOBJDIR=  $(BUILD_DIR)/deepc/libdeepcc
 
-CFLAGS += -g -W -Wall -Wextra
+CXXFLAGS += -g -W -Wall -Wextra -std=c++11
 
 TARGET	= $(DDCOBJDIR)/libdeepcc.a
-SRCS 	= sourcepos.cpp sourcespan.cpp sourcebag.cpp sourcefile.cpp
+SRCS 	= sourcepos.cpp sourcespan.cpp allsources.cpp sourcefile.cpp programdb.cpp programdb.pb.cpp
 OBJS    := $(SRCS:%.cpp=$(DDCOBJDIR)/%.o)
 
 all:    $(DDCOBJDIR) $(TARGET)
@@ -21,5 +21,9 @@ clean:
 
 $(DDCOBJDIR):
 	mkdir -p $(DDCOBJDIR)
+
+protocol:
+	protoc --cpp_out=. programdb.proto && \
+		mv programdb.pb.cc programdb.pb.cpp
 
 .PHONY:	all clean

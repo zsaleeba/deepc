@@ -11,30 +11,30 @@
 #include "sourcespan.h"
 
 
-namespace DeepC
+namespace deepC
 {
     
-    //
-    // Having added a new span of characters to the source, adjust our
-    // span if necessary.
-    //
-    
-    void SourceSpan::add(const SourceSpan &at)
-    {
-        from_.add(at);
-        to_.add(at);
-    }
-    
-    
-    //
-    // Having removed a span of characters in the source, adjust our
-    // span if necessary.
-    //
-    
-    void SourceSpan::remove(const SourceSpan &at)
-    {
-        from_.remove(at);
-        to_.remove(at);
-    }
+//
+// Having added a new span of characters to the source, adjust our
+// span if necessary.
+//
 
+void SourceSpan::add(const SourceSpan &at)
+{
+    from_.add(at);
+    to_.add(at);
 }
+
+
+//
+// Having removed a span of characters in the source, adjust our
+// span if necessary.
+//
+
+void SourceSpan::remove(const SourceSpan &at)
+{
+    from_.remove(at);
+    to_.remove(at);
+}
+
+}  // namespace deepC

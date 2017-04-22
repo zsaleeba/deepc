@@ -249,7 +249,7 @@ class cbnode {
             insertEntry(new_entry, new_value, new_value_size);
 
             // There's nothing that we need inserted up in the parent.
-            return NULL;
+            return nullptr;
         } else {
             // We have to split the node in two.
             bool insert_left = new_entry <= num_entries_ / 2;
@@ -305,12 +305,12 @@ class cbnode {
     //
 
     void rebalance(int underweight_entry) {
-        cbnode<T, offset_> *underweight_subtree = sub_[underweight_entry].subtree_;
+        cbnode<T, kOrder> *underweight_subtree = sub_[underweight_entry].subtree_;
 
         // Is there an entry to the left of the underweight one?
         if (underweight_entry > 0) {
             // Yes, can we steal an item from the left?
-            cbnode<T, offset_> *left_subtree = sub_[underweight_entry - 1].subtree_;
+            cbnode<T, kOrder> *left_subtree = sub_[underweight_entry - 1].subtree_;
 
             if (left_subtree->num_entries_ > ((kOrder + 1) / 2)) {
                 // Yes, steal from the left
@@ -331,7 +331,7 @@ class cbnode {
             }
         } else if (underweight_entry + 1 < num_entries_) {
             // Can we steal an item from the right instead?
-            cbnode<T, offset_> *right_subtree = sub_[underweight_entry + 1].subtree_;
+            cbnode<T, kOrder> *right_subtree = sub_[underweight_entry + 1].subtree_;
 
             if (right_subtree->num_entries_ > ((kOrder + 1) / 2)) {
                 // Yes, steal from the right.
@@ -397,7 +397,7 @@ class cbnode {
         new_node->next_ = this->next_;
         this->next_ = new_node;
 
-        if (new_node->next_ != NULL)
+        if (new_node->next_ != nullptr)
             new_node->next_->prev_ = new_node;
     }
 
@@ -407,11 +407,11 @@ class cbnode {
     //
 
     void linkDelete() {
-        if (this->prev_ != NULL) {
+        if (this->prev_ != nullptr) {
             this->prev_->next_ = this->next_;
         }
 
-        if (this->next_ != NULL) {
+        if (this->next_ != nullptr) {
             this->next_->prev_ = this->prev_;
         }
     }
@@ -423,13 +423,13 @@ class cbnode {
     //              returns the offset of the found object in the tree.
     // PARAMETERS:  size_t offset        - the offset to look for.
     //              size_t *found_offset - set to the base offset of the found value.
-    // RETURNS:     T * - the found value or NULL if not found.
+    // RETURNS:     T * - the found value or nullptr if not found.
     //
 
     T *lookup(size_t lookup_offset, size_t *found_offset) {
         // Check for an out-of-bounds offset.
         if (lookup_offset >= total_size_)
-            return NULL;
+            return nullptr;
 
         // Search down the tree until we find a leaf.
         cbnode<T, kOrder> *search_subtree = this;
@@ -484,7 +484,7 @@ class cbnode {
                 return insertEntryChecked(found_entry + 1, insert_new_sub_node, new_value_size);
             } else {
                 // Nothing to insert above.
-                return NULL;
+                return nullptr;
             }
         }
     }
@@ -633,8 +633,12 @@ class cbtree {
         size_t found_offset;
         return root_->lookup(pos, &found_offset);
     }
+
+    T & operator[](size_t pos) {
+        return *root_->lookup(pos);
+    }
 };
 
-}  // namespace DeepC
+}  // namespace deepC
 
 #endif  // DEEPCOMPILER_CBTREE_H_
