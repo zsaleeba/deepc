@@ -15,8 +15,10 @@
 #include <map>
 #include <vector>
 #include <string>
+#include <lmdb.h>
 
-#include "lmdb++.h"
+#include "programdb_generated.h"
+
 
 namespace deepC
 {
@@ -36,8 +38,17 @@ namespace deepC
 
 class ProgramDb
 {
+private:
     // A map of all the source files.
-    lmdb::env env_;
+    MDB_env *env_;
+    bool     isOpen_;
+    
+    // The sub-databases we plan to use.
+    MDB_dbi  sourceFilesDbi_;
+    MDB_dbi  sourceFilesIdsByFilenameDbi_;
+    
+    // An error message.
+    std::string errorMessage_;
 
 private:
     // Load a source file.
@@ -47,9 +58,16 @@ public:
     ProgramDb(const std::string &filename);
     ~ProgramDb();
     
-    // Source file list.
-    void getSourceFiles(std::map<std::string, std::string> &sourceFiles);
+    bool isOpen() const { return isOpen_; }
     
+    // Source file list.
+    bool getSourceFileByFileId(unsigned int fileId, bool *notFound, std::string *filename, SourceModified *modified);
+    bool getSourceTextByFileId(unsigned int fileId, std::string *source);
+    bool getSourceFileIdByFilename(const std::string &filename, unsigned int *fileId);
+    bool addSourceFile(const std::string &filename, unsigned int *fileId);
+    
+    // Error accessor.
+    std::string getErrorMessage() const { return errorMessage_; }
 };
 
 }  // namespace deepC

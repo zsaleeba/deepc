@@ -12,7 +12,7 @@ CONFIG += staticlib
 QMAKE_CXXFLAGS += -std=c++11
 
 unix {
-    INCLUDEPATH += /usr/include
+    INCLUDEPATH += /usr/include /usr/local/include /usr/include/x86_64-linux-gnu
 }
 
 
@@ -20,8 +20,7 @@ SOURCES += sourcepos.cpp \
     sourcespan.cpp \
     sourcefile.cpp \
     allsources.cpp \
-    programdb.cpp \
-    programdb.pb.cpp
+    programdb.cpp
 
 HEADERS += sourcepos.h \
     chain.h \
@@ -30,10 +29,12 @@ HEADERS += sourcepos.h \
     sourcespan.h \
     allsources.h \
     programdb.h \
-    lmdb++.h \
-    programdb.pb.h
+    programdb_generated.h
 
 unix {
     target.path = /usr/lib
     INSTALLS += target
 }
+
+DISTFILES += \
+    programdb.fbs

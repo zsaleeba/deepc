@@ -1,5 +1,0 @@
-syntax = "proto3";
-
-message SourceFileList {
-    repeated string sources = 1;
-}

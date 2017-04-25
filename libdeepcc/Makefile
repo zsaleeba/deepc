@@ -23,7 +23,6 @@ $(DDCOBJDIR):
 	mkdir -p $(DDCOBJDIR)
 
 protocol:
-	protoc --cpp_out=. programdb.proto && \
-		mv programdb.pb.cc programdb.pb.cpp
+	flatc --cpp --binary programdb.fbs
 
 .PHONY:	all clean
