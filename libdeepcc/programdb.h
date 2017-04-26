@@ -38,6 +38,15 @@ namespace deepC
 
 class ProgramDb
 {
+public:
+    // Results from "get" calls.
+    enum class GetResultCode
+    {
+        FOUND,
+        NOT_FOUND,
+        ERROR
+    };
+
 private:
     // A map of all the source files.
     MDB_env *env_;
@@ -61,10 +70,9 @@ public:
     bool isOpen() const { return isOpen_; }
     
     // Source file list.
-    bool getSourceFileByFileId(unsigned int fileId, bool *notFound, std::string *filename, SourceModified *modified);
-    bool getSourceTextByFileId(unsigned int fileId, std::string *source);
-    bool getSourceFileIdByFilename(const std::string &filename, unsigned int *fileId);
-    bool addSourceFile(const std::string &filename, unsigned int *fileId);
+    GetResultCode getSourceFileByFileId(unsigned int fileId, std::string *filename, std::string *source, SourceModified *modified);
+    GetResultCode getSourceFileIdByFilename(const std::string &filename, unsigned int *fileId);
+    bool addSourceFile(const std::string &filename, const std::string &source, const SourceModified &modified, unsigned int *fileId);
     
     // Error accessor.
     std::string getErrorMessage() const { return errorMessage_; }

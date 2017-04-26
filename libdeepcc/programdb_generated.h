@@ -114,6 +114,21 @@ inline flatbuffers::Offset<SourceFile> CreateSourceFileDirect(
       modified);
 }
 
+inline const deepC::SourceFile *GetSourceFile(const void *buf) {
+  return flatbuffers::GetRoot<deepC::SourceFile>(buf);
+}
+
+inline bool VerifySourceFileBuffer(
+    flatbuffers::Verifier &verifier) {
+  return verifier.VerifyBuffer<deepC::SourceFile>(nullptr);
+}
+
+inline void FinishSourceFileBuffer(
+    flatbuffers::FlatBufferBuilder &fbb,
+    flatbuffers::Offset<deepC::SourceFile> root) {
+  fbb.Finish(root);
+}
+
 }  // namespace deepC
 
 #endif  // FLATBUFFERS_GENERATED_PROGRAMDB_DEEPC_H_

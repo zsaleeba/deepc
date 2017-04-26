@@ -10,3 +10,5 @@ table SourceFile {
     source   : string;
     modified : SourceModified;
 }
+
+root_type SourceFile;
