@@ -23,6 +23,6 @@ $(DDCOBJDIR):
 	mkdir -p $(DDCOBJDIR)
 
 protocol:
-	flatc --cpp --binary programdb.fbs
+	flatc --cpp --binary sourcefile.fbs
 
 .PHONY:	all clean

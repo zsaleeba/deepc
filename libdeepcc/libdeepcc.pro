@@ -20,7 +20,8 @@ SOURCES += sourcepos.cpp \
     sourcespan.cpp \
     sourcefile.cpp \
     allsources.cpp \
-    programdb.cpp
+    programdb.cpp \
+    sourcemonitor.cpp
 
 HEADERS += sourcepos.h \
     chain.h \
@@ -29,7 +30,8 @@ HEADERS += sourcepos.h \
     sourcespan.h \
     allsources.h \
     programdb.h \
-    programdb_generated.h
+    sourcefile_generated.h \
+    sourcemonitor.h
 
 unix {
     target.path = /usr/lib
