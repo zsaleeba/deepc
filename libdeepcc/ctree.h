@@ -9,32 +9,36 @@
  ***                                                                    ***
  **************************************************************************/
 
-#ifndef CSYNTAXTREE_H
-#define CSYNTAXTREE_H
+#ifndef CTREE_H
+#define CTREE_H
+
+#include <memory>
+#include <vector>
 
 #include "sourcepos.h"
+#include "sourcespan.h"
 
 
-//
-// Tree nodes can have one of a number of node types.
-//
 
-enum class CTreeNodeType
+namespace deepC
 {
-    None,
-    CompilationUnit,
-    FunctionDefinition
-};
-
 
 //
 // Parse trees are represented as trees of CTrees.
+// CTrees are subclassed by all the concrete node types.
 //
 
 class CTree
 {
 public:
     // For convenience each node has a node type.
+    enum class NodeType
+    {
+        None,
+        CompilationUnit,
+        FunctionDefinition
+    };
+
 private:
     // What type of node this is.
     NodeType nodeType_;
@@ -44,7 +48,7 @@ private:
 
 public:
     // Constructor.
-    CTree(NodeType nt) : nodeType_(NodeType::None) {}
+    CTree(NodeType nt, const SourceSpan &span) : nodeType_(nt), span_(span) {}
 
     // Accessors.
     NodeType getNodeType() const { return nodeType_; }
@@ -63,7 +67,7 @@ private:
 
 public:
     // Constructor.
-    CTreeCompilationUnit() : CTree(CTree::NodeType::CompilationUnit) {}
+    CTreeCompilationUnit(const SourceSpan &span) : CTree(CTree::NodeType::CompilationUnit, span) {}
 
     // Accessors.
     const std::vector<std::shared_ptr<CTree>> getChildren() { return children_; }
@@ -83,13 +87,13 @@ private:
 
 public:
     // Constructor.
-    CTreeCompilationUnit() : CTree(CTree::NodeType::CompilationUnit) {}
+    CTreeFunctionDefinition(const SourceSpan &span) : CTree(CTree::NodeType::FunctionDefinition, span) {}
 
     // Accessors.
     const std::vector<std::shared_ptr<CTree>> getChildren() { return children_; }
     void appendChild(std::shared_ptr<CTree> child) { children_.push_back(child); }
 };
 
+} // namespace deepC.
 
-
-#endif // CSYNTAXTREE_H
+#endif // CTREE_H

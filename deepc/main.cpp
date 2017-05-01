@@ -4,10 +4,7 @@
 #include <getopt.h>
 #include <string>
 
-#include "CLexer.h"
-#include "CParser.h"
-#include "antlr4-runtime.h"
-#include "cparserlistener.h"
+#include "sourcemonitor.h"
 
 
 static struct option longOptions[] =
@@ -23,25 +20,14 @@ static struct option longOptions[] =
 
 bool compile(std::string srcFileName)
 {
-    antlr4::ANTLRFileStream fs(srcFileName);
-
-    CLexer lexer(&fs);
-    antlr4::CommonTokenStream tokens(&lexer);
-    CParser parser(&tokens);
-    CParserListener parserListener;
-    antlr4::ConsoleErrorListener errorListener;
-    parser.addParseListener(&parserListener);
-    parser.addErrorListener(&errorListener);
-    antlr4::tree::ParseTree *parseTree = parser.compilationUnit();
-    std::cout << parseTree->toStringTree(&parser) << std::endl;
-
+    std::cout << "compiling " << srcFileName << std::endl;
     return true;
 }
 
 
 int main(int argc, char **argv)
 {
-    std::cout << "deepc v0.01\n";
+    std::cout << "deepc v0.02\n";
 
     // Gather arguments.
     int optCh = 0;

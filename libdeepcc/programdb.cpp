@@ -14,7 +14,7 @@
 #include <sys/mman.h>
 
 #include "programdb.h"
-#include "programdb_generated.h"
+#include "sourcefile_generated.h"
 
 
 namespace deepC

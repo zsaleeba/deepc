@@ -15,6 +15,7 @@
 #include <poll.h>
 #include <sys/inotify.h>
 #include <unistd.h>
+#include <string.h>
 
 #include "sourcemonitor.h"
 
@@ -73,7 +74,7 @@ bool SourceMonitor::startMonitoring()
 
     for (auto &fname: filenames_)
     {
-        int watch = inotify_add_watch(notifyFd, fname, IN_CLOSE_WRITE);
+        int watch = inotify_add_watch(notifyFd_, fname.c_str(), IN_CLOSE_WRITE);
         if (watch < 0)
         {
             errorMessage_ = std::string("can't monitor files, inotify_add_watch(") + fname + "): " + strerror(errno);

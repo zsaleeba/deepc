@@ -6,7 +6,7 @@ CPOBJDIR= $(BUILD_DIR)/deepc/cparser
 DCCOBJDIR= $(BUILD_DIR)/deepc/libdeepcc
 PMOBJDIR=  $(BUILD_DIR)/deepc/persmem
 
-INCLUDES= -I../cparser -I$(CPOBJDIR) -I../antlr4_runtime/runtime/src
+INCLUDES= -I../cparser -I../libdeepcc
 CXXFLAGS += -g -W -Wall -Wextra -std=c++11 $(INCLUDES)
 
 TARGET	= $(BINDIR)/deepc
