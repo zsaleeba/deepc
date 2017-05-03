@@ -5,7 +5,7 @@ DDCOBJDIR=  $(BUILD_DIR)/deepc/libdeepcc
 CXXFLAGS += -g -W -Wall -Wextra -std=c++11
 
 TARGET	= $(DDCOBJDIR)/libdeepcc.a
-SRCS 	= sourcepos.cpp sourcespan.cpp allsources.cpp sourcefile.cpp programdb.cpp
+SRCS 	= sourcepos.cpp sourcespan.cpp allsources.cpp sourcefile.cpp programdb.cpp sourcemonitor.cpp diff.cpp
 OBJS    := $(SRCS:%.cpp=$(DDCOBJDIR)/%.o)
 
 all:    $(DDCOBJDIR) $(TARGET)

@@ -20,6 +20,15 @@
 #include "sourcemonitor.h"
 
 
+// Prototype from diff.cpp.
+extern int
+diff(const void *a, int aoff, int n,
+        const void *b, int boff, int m,
+        void *context, int dmax,
+        struct varray *ses, int *sn,
+        struct varray *buf);
+
+
 namespace deepC
 {
 

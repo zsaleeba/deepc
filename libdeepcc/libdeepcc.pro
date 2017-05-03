@@ -22,7 +22,9 @@ SOURCES += sourcepos.cpp \
     allsources.cpp \
     programdb.cpp \
     sourcemonitor.cpp \
-    ctree.cpp
+    ctree.cpp \
+    sourcediff.cpp \
+    diff.cpp
 
 HEADERS += sourcepos.h \
     chain.h \
@@ -34,7 +36,8 @@ HEADERS += sourcepos.h \
     sourcefile_generated.h \
     sourcemonitor.h \
     clexer.h \
-    ctree.h
+    ctree.h \
+    sourcediff.h
 
 unix {
     target.path = /usr/lib
