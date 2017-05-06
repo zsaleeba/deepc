@@ -33,120 +33,107 @@
  * This is the same algorithm used by GNU diff(1).
  */
 
+#include <vector>
 #include <stdlib.h>
 #include <limits.h>
 #include <errno.h>
 
-#define FV(k) _v(ctx, (k), 0)
-#define RV(k) _v(ctx, (k), 1)
+#include "diff.h"
 
-struct _ctx {
-	void *context;
-	struct varray *buf;
-	struct varray *ses;
-	int si;
-	int dmax;
-};
+
+namespace deepC
+{
 
 struct middle_snake {
 	int x, y, u, v;
 };
 
-static void
-_setv(struct _ctx *ctx, int k, int r, int val)
+
+Diff::Diff(const std::string &a, const std::string &b, std::vector<size_t> &buf) : a_(a), b_(b), buf_(buf)
 {
-	int j;
-	int *i;
-                /* Pack -N to N into 0 to N * 2
-                 */
-	j = k <= 0 ? -k * 4 + r : k * 4 + (r - 2);
-
-	i = (int *)varray_get(ctx->buf, j);
-	*i = val;
-}
-static int
-_v(struct _ctx *ctx, int k, int r)
-{
-	int j;
-
-	j = k <= 0 ? -k * 4 + r : k * 4 + (r - 2);
-
-	return *((int *)varray_get(ctx->buf, j));
 }
 
-static int
-_find_middle_snake(const void *a, int aoff, int n,
-		const void *b, int boff, int m,
-		struct _ctx *ctx,
-		struct middle_snake *ms)
+
+int Diff::find_middle_snake(off_t aoff, size_t alen, off_t boff, size_t blen, struct middle_snake *ms)
 {
 	int delta, odd, mid, d;
 
-	delta = n - m;
+	delta = blen - alen;
 	odd = delta & 1;
-	mid = (n + m) / 2;
+	mid = (blen + alen) / 2;
 	mid += odd;
 
-	_setv(ctx, 1, 0, 0);
-	_setv(ctx, delta - 1, 1, n);
+	setv(1, 0, 0);
+	setv(delta - 1, 1, blen);
 
-	for (d = 0; d <= mid; d++) {
+	for (d = 0; d <= mid; d++) 
+    {
 		int k, x, y;
 
-		if ((2 * d - 1) >= ctx->dmax) {
-			return ctx->dmax;
-		}
-
-		for (k = d; k >= -d; k -= 2) {
-			if (k == -d || (k != d && FV(k - 1) < FV(k + 1))) {
-				x = FV(k + 1);
-			} else {
-				x = FV(k - 1) + 1;
+		for (k = d; k >= -d; k -= 2) 
+        {
+			if (k == -d || (k != d && getv_f(k - 1) < getv_f(k + 1))) 
+            {
+				x = getv_f(k + 1);
+			} 
+            else 
+            {
+				x = getv_f(k - 1) + 1;
 			}
+            
 			y = x - k;
 
 			ms->x = x;
 			ms->y = y;
 
-            const unsigned char *a0 = (const unsigned char *)a + aoff;
-            const unsigned char *b0 = (const unsigned char *)b + boff;
-            while (x < n && y < m && a0[x] == b0[y]) {
+            while (x < blen && y < alen && a_[aoff + x] == b_[boff + y]) 
+            {
                 x++; y++;
             }
 
-            _setv(ctx, k, 0, x);
+            setv(k, 0, x);
 
-			if (odd && k >= (delta - (d - 1)) && k <= (delta + (d - 1))) {
-				if (x >= RV(k)) {
+			if (odd && k >= (delta - (d - 1)) && k <= (delta + (d - 1))) 
+            {
+				if (x >= getv_r(k)) 
+                {
 					ms->u = x;
 					ms->v = y;
 					return 2 * d - 1;
 				}
 			}
 		}
-		for (k = d; k >= -d; k -= 2) {
-			int kr = (n - m) + k;
+        
+		for (k = d; k >= -d; k -= 2) 
+        {
+			int kr = (blen - alen) + k;
 
-			if (k == d || (k != -d && RV(kr - 1) < RV(kr + 1))) {
-				x = RV(kr - 1);
-			} else {
-				x = RV(kr + 1) - 1;
+			if (k == d || (k != -d && getv_r(kr - 1) < getv_r(kr + 1))) 
+            {
+				x = getv_r(kr - 1);
+			} 
+            else 
+            {
+				x = getv_r(kr + 1) - 1;
 			}
+            
 			y = x - kr;
 
 			ms->u = x;
 			ms->v = y;
 
-            const unsigned char *a0 = (const unsigned char *)a + aoff;
-            const unsigned char *b0 = (const unsigned char *)b + boff;
-            while (x > 0 && y > 0 && a0[x - 1] == b0[y - 1]) {
-                x--; y--;
+            while (x > 0 && y > 0 && a_[aoff + x - 1] == b_[boff + y - 1]) 
+            {
+                x--; 
+                y--;
             }
 
-            _setv(ctx, kr, 1, x);
+            setv(kr, 1, x);
 
-			if (!odd && kr >= -d && kr <= d) {
-				if (x <= FV(kr)) {
+			if (!odd && kr >= -d && kr <= d) 
+            {
+				if (x <= getv_f(kr)) 
+                {
 					ms->x = x;
 					ms->y = y;
 					return 2 * d;
@@ -155,54 +142,54 @@ _find_middle_snake(const void *a, int aoff, int n,
 		}
 	}
 
-	errno = EFAULT;
-
 	return -1;
 }
 
-static void
-_edit(struct _ctx *ctx, int op, int off, int len)
+/* Add an edit to the SES (or
+ * coalesce if the op is the same)
+ */
+void Diff::edit(DiffEdit::Op op, int off, int len)
 {
-	struct diff_edit *e;
-
-	if (len == 0 || ctx->ses == NULL) {
-		return;
-	}               /* Add an edit to the SES (or
-                     * coalesce if the op is the same)
-                     */
-	e = varray_get(ctx->ses, ctx->si);
-	if (e->op != op) {
-		if (e->op) {
-			ctx->si++;
-			e = varray_get(ctx->ses, ctx->si);
-		}
-		e->op = op;
-		e->off = off;
-		e->len = len;
-	} else {
-		e->len += len;
+    // If it's the first one just add it.
+    if (ses_->empty())
+    {
+        ses_->push_back(DiffEdit(op, off, len));
+        return;
+    }
+    
+    // See if we can coalesce with the previous one.
+    DiffEdit &e = ses_->back();
+	if (e.getOp() != op) 
+    {
+        ses_->push_back(DiffEdit(op, off, len));
+	}
+    else 
+    {
+		e.addLength(len);
 	}
 }
 
-static int
-_ses(const void *a, int aoff, int n,
-		const void *b, int boff, int m,
-		struct _ctx *ctx)
+int Diff::ses(off_t aoff, size_t alen, off_t boff, size_t blen)
 {
 	struct middle_snake ms;
-	int d;
+	ssize_t d;
 
-	if (n == 0) {
-		_edit(ctx, DIFF_INSERT, boff, m);
-		d = m;
-	} else if (m == 0) {
-		_edit(ctx, DIFF_DELETE, aoff, n);
-		d = n;
-	} else {
-                    /* Find the middle "snake" around which we
-                     * recursively solve the sub-problems.
-                     */
-		d = _find_middle_snake(a, aoff, n, b, boff, m, ctx, &ms);
+	if (blen == 0) 
+    {
+		edit(DiffEdit::Op::INSERT, boff, alen);
+		d = alen;
+	} 
+    else if (alen == 0) 
+    {
+		edit(DiffEdit::Op::DELETE, aoff, blen);
+		d = blen;
+	} 
+    else 
+    {
+        /* Find the middle "snake" around which we
+         * recursively solve the sub-problems.
+         */
+		d = find_middle_snake(aoff, blen, boff, alen, &ms);
 		if (d == -1) {
 			return -1;
 		} else if (d >= ctx->dmax) {
@@ -210,17 +197,17 @@ _ses(const void *a, int aoff, int n,
 		} else if (ctx->ses == NULL) {
 			return d;
 		} else if (d > 1) {
-			if (_ses(a, aoff, ms.x, b, boff, ms.y, ctx) == -1) {
+			if (ses(a, aoff, ms.x, b, boff, ms.y) == -1) {
 				return -1;
 			}
 
-			_edit(ctx, DIFF_MATCH, aoff + ms.x, ms.u - ms.x);
+			edit(DiffEdit::Op::MATCH, aoff + ms.x, ms.u - ms.x);
 
 			aoff += ms.u;
 			boff += ms.v;
-			n -= ms.u;
-			m -= ms.v;
-			if (_ses(a, aoff, n, b, boff, m, ctx) == -1) {
+			blen -= ms.u;
+			alen -= ms.v;
+			if (ses(a, aoff, blen, b, boff, alen) == -1) {
 				return -1;
 			}
 		} else {
@@ -241,21 +228,21 @@ _ses(const void *a, int aoff, int n,
                   *     -       |
                   */
 
-			if (m > n) {
+			if (alen > blen) {
 				if (x == u) {
-					_edit(ctx, DIFF_MATCH, aoff, n);
-					_edit(ctx, DIFF_INSERT, boff + (m - 1), 1);
+					edit(DiffEdit::Op::MATCH,  aoff, blen);
+					edit(DiffEdit::Op::INSERT, boff + (alen - 1), 1);
 				} else {
-					_edit(ctx, DIFF_INSERT, boff, 1);
-					_edit(ctx, DIFF_MATCH, aoff, n);
+					edit(DiffEdit::Op::INSERT, boff, 1);
+					edit(DiffEdit::Op::MATCH,  aoff, blen);
 				}
 			} else {
 				if (x == u) {
-					_edit(ctx, DIFF_MATCH, aoff, m);
-					_edit(ctx, DIFF_DELETE, aoff + (n - 1), 1);
+					edit(DiffEdit::Op::MATCH,  aoff, alen);
+					edit(DiffEdit::Op::DELETE, aoff + (blen - 1), 1);
 				} else {
-					_edit(ctx, DIFF_DELETE, aoff, 1);
-					_edit(ctx, DIFF_MATCH, aoff + 1, m);
+					edit(DiffEdit::Op::DELETE, aoff, 1);
+					edit(DiffEdit::Op::MATCH,  aoff + 1, alen);
 				}
 			}
 		}
@@ -263,70 +250,33 @@ _ses(const void *a, int aoff, int n,
 
 	return d;
 }
-int
-diff(const void *a, int aoff, int n,
-		const void *b, int boff, int m,
-        void *context, int dmax,
-		struct varray *ses, int *sn,
-		struct varray *buf)
+
+ssize_t Diff::diff(std::vector<DiffEdit> *ses)
 {
-	struct _ctx ctx;
-	int d, x, y;
-	struct diff_edit *e = NULL;
-	struct varray tmp;
-
-	ctx.context = context;
-	if (buf) {
-		ctx.buf = buf;
-	} else {
-		varray_init(&tmp, sizeof(int), NULL);
-		ctx.buf = &tmp;
-	}
-	ctx.ses = ses;
-	ctx.si = 0;
-	ctx.dmax = dmax ? dmax : INT_MAX;
-
-	if (ses && sn) {
-		if ((e = varray_get(ses, 0)) == NULL) {
-			AMSG("");
-			if (buf == NULL) {
-				varray_deinit(&tmp);
-			}
-			return -1;
-		}
-		e->op = 0;
-	}
-
-         /* The _ses function assumes the SES will begin or end with a delete
-          * or insert. The following will insure this is true by eating any
-          * beginning matches. This is also a quick to process sequences
-          * that match entirely.
-          */
-	x = y = 0;
-
-    const unsigned char *a0 = (const unsigned char *)a + aoff;
-    const unsigned char *b0 = (const unsigned char *)b + boff;
-    while (x < n && y < m && a0[x] == b0[y]) {
-        x++; y++;
+    /* The _ses function assumes the SES will begin or end with a delete
+     * or insert. The following will insure this is true by eating any
+     * beginning matches. This is also a quick to process sequences
+     * that match entirely.
+     */
+	off_t x = 0;
+    while (x < a_.size() && x < b_.size() && a_[x] == b_[x]) 
+    {
+        x++;
     }
 
-    _edit(&ctx, DIFF_MATCH, aoff, x);
+    if (x > 0)
+    {
+        edit(DiffEdit::Op::MATCH, aoff, x);
+    }
 
-	if ((d = _ses(a, aoff + x, n - x, b, boff + y, m - y, &ctx)) == -1) {
-		AMSG("");
-		if (buf == NULL) {
-			varray_deinit(&tmp);
-		}
+    d = ses(x, a_.size() - x, y, b_.size() - y);
+	if (d == -1) 
+    {
 		return -1;
-	}
-	if (ses && sn) {
-		*sn = e->op ? ctx.si + 1 : 0;
-	}
-
-	if (buf == NULL) {
-		varray_deinit(&tmp);
 	}
 
 	return d;
 }
 
+
+}  // namespace deepC

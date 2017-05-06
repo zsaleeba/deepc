@@ -37,7 +37,8 @@ HEADERS += sourcepos.h \
     sourcemonitor.h \
     clexer.h \
     ctree.h \
-    sourcediff.h
+    sourcediff.h \
+    diff.h
 
 unix {
     target.path = /usr/lib
