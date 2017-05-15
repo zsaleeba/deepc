@@ -12,7 +12,7 @@
 #ifndef DEEPC_SOURCEDIFF_H
 #define DEEPC_SOURCEDIFF_H
 
-#include <hash_map>
+#include <string>
 
 #include "cbtree.h"
 
@@ -31,12 +31,12 @@ class SourceDiff
     std::string filename_;
 
     // A set of hashes for each line of the original file.
-    std::hash<std::string, std::vector<int> > oldLineHashes_;
-    std::hash<std::string, std::vector<int> > newLineHashes_;
+//    std::hash<std::string, std::vector<int> > oldLineHashes_;
+//    std::hash<std::string, std::vector<int> > newLineHashes_;
 
 public:
     // Constructor for the source bag.
-    SourceDiff(std::string filename);
+    SourceDiff(const std::string &filename);
 };
 
 }  // namespace deepC

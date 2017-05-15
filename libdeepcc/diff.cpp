@@ -49,36 +49,38 @@ struct middle_snake {
 };
 
 
-Diff::Diff(const std::string &a, const std::string &b, std::vector<size_t> &buf) : a_(a), b_(b), buf_(buf)
+Diff::Diff(const std::string &a, const std::string &b) : a_(a), b_(b)
 {
 }
 
 
-int Diff::find_middle_snake(off_t aoff, size_t alen, off_t boff, size_t blen, struct middle_snake *ms)
+//
+// Finds the "snake" of edits which results in the smallest deviation from 
+// the 
+//
+
+off_t Diff::findMiddleSnake(off_t aoff, ssize_t alen, off_t boff, ssize_t blen, struct middle_snake *ms)
 {
-	int delta, odd, mid, d;
+	ssize_t delta = blen - alen;
+	bool odd = (delta & 1) != 0;
+    off_t mid = (blen + alen) / 2 + (odd ? 1 : 0);
 
-	delta = blen - alen;
-	odd = delta & 1;
-	mid = (blen + alen) / 2;
-	mid += odd;
+	setV(1, 0, 0);
+	setV(delta - 1, 1, blen);
 
-	setv(1, 0, 0);
-	setv(delta - 1, 1, blen);
-
-	for (d = 0; d <= mid; d++) 
+    for (off_t d = 0; d <= mid; d++)
     {
-		int k, x, y;
+        off_t x, y;
 
-		for (k = d; k >= -d; k -= 2) 
+        for (off_t k = d; k >= -d; k -= 2)
         {
-			if (k == -d || (k != d && getv_f(k - 1) < getv_f(k + 1))) 
+			if (k == -d || (k != d && getVForward(k - 1) < getVForward(k + 1))) 
             {
-				x = getv_f(k + 1);
+				x = getVForward(k + 1);
 			} 
             else 
             {
-				x = getv_f(k - 1) + 1;
+				x = getVForward(k - 1) + 1;
 			}
             
 			y = x - k;
@@ -86,16 +88,17 @@ int Diff::find_middle_snake(off_t aoff, size_t alen, off_t boff, size_t blen, st
 			ms->x = x;
 			ms->y = y;
 
-            while (x < blen && y < alen && a_[aoff + x] == b_[boff + y]) 
+            while (x < blen && y < alen && a_[aoff + x] == b_[boff + y])
             {
-                x++; y++;
+                x++;
+                y++;
             }
 
-            setv(k, 0, x);
+            setV(k, 0, x);
 
 			if (odd && k >= (delta - (d - 1)) && k <= (delta + (d - 1))) 
             {
-				if (x >= getv_r(k)) 
+				if (x >= getVReverse(k)) 
                 {
 					ms->u = x;
 					ms->v = y;
@@ -104,17 +107,17 @@ int Diff::find_middle_snake(off_t aoff, size_t alen, off_t boff, size_t blen, st
 			}
 		}
         
-		for (k = d; k >= -d; k -= 2) 
+        for (off_t k = d; k >= -d; k -= 2)
         {
-			int kr = (blen - alen) + k;
+            int kr = (blen - alen) + k;
 
-			if (k == d || (k != -d && getv_r(kr - 1) < getv_r(kr + 1))) 
+			if (k == d || (k != -d && getVReverse(kr - 1) < getVReverse(kr + 1))) 
             {
-				x = getv_r(kr - 1);
+				x = getVReverse(kr - 1);
 			} 
             else 
             {
-				x = getv_r(kr + 1) - 1;
+				x = getVReverse(kr + 1) - 1;
 			}
             
 			y = x - kr;
@@ -128,11 +131,11 @@ int Diff::find_middle_snake(off_t aoff, size_t alen, off_t boff, size_t blen, st
                 y--;
             }
 
-            setv(kr, 1, x);
+            setV(kr, 1, x);
 
 			if (!odd && kr >= -d && kr <= d) 
             {
-				if (x <= getv_f(kr)) 
+				if (x <= getVForward(kr)) 
                 {
 					ms->x = x;
 					ms->y = y;
@@ -145,9 +148,11 @@ int Diff::find_middle_snake(off_t aoff, size_t alen, off_t boff, size_t blen, st
 	return -1;
 }
 
-/* Add an edit to the SES (or
- * coalesce if the op is the same)
- */
+
+//
+// Adds an edit to the SES (or coalesce if the op is the same).
+//
+
 void Diff::edit(DiffEdit::Op op, int off, int len)
 {
     // If it's the first one just add it.
@@ -169,10 +174,15 @@ void Diff::edit(DiffEdit::Op op, int off, int len)
 	}
 }
 
-int Diff::ses(off_t aoff, size_t alen, off_t boff, size_t blen)
+
+//
+// Finds the shortest edit sequence.
+//
+
+off_t Diff::ses(off_t aoff, size_t alen, off_t boff, size_t blen)
 {
-	struct middle_snake ms;
-	ssize_t d;
+    struct middle_snake ms;
+    ssize_t d;
 
 	if (blen == 0) 
     {
@@ -189,15 +199,15 @@ int Diff::ses(off_t aoff, size_t alen, off_t boff, size_t blen)
         /* Find the middle "snake" around which we
          * recursively solve the sub-problems.
          */
-		d = find_middle_snake(aoff, blen, boff, alen, &ms);
-		if (d == -1) {
+		d = findMiddleSnake(aoff, blen, boff, alen, &ms);
+		if (d == -1) 
+        {
 			return -1;
-		} else if (d >= ctx->dmax) {
-			return ctx->dmax;
-		} else if (ctx->ses == NULL) {
-			return d;
-		} else if (d > 1) {
-			if (ses(a, aoff, ms.x, b, boff, ms.y) == -1) {
+		} 
+        else if (d > 1)
+        {
+            if (ses(aoff, ms.x, boff, ms.y) == -1)
+            {
 				return -1;
 			}
 
@@ -207,10 +217,13 @@ int Diff::ses(off_t aoff, size_t alen, off_t boff, size_t blen)
 			boff += ms.v;
 			blen -= ms.u;
 			alen -= ms.v;
-			if (ses(a, aoff, blen, b, boff, alen) == -1) {
+            if (ses(aoff, blen, boff, alen) == -1)
+            {
 				return -1;
 			}
-		} else {
+		} 
+        else 
+        {
 			int x = ms.x;
 			int u = ms.u;
 
@@ -228,19 +241,28 @@ int Diff::ses(off_t aoff, size_t alen, off_t boff, size_t blen)
                   *     -       |
                   */
 
-			if (alen > blen) {
-				if (x == u) {
+			if (alen > blen) 
+            {
+				if (x == u) 
+                {
 					edit(DiffEdit::Op::MATCH,  aoff, blen);
 					edit(DiffEdit::Op::INSERT, boff + (alen - 1), 1);
-				} else {
+				} 
+                else 
+                {
 					edit(DiffEdit::Op::INSERT, boff, 1);
 					edit(DiffEdit::Op::MATCH,  aoff, blen);
 				}
-			} else {
-				if (x == u) {
+			} 
+            else 
+            {
+				if (x == u) 
+                {
 					edit(DiffEdit::Op::MATCH,  aoff, alen);
 					edit(DiffEdit::Op::DELETE, aoff + (blen - 1), 1);
-				} else {
+				} 
+                else 
+                {
 					edit(DiffEdit::Op::DELETE, aoff, 1);
 					edit(DiffEdit::Op::MATCH,  aoff + 1, alen);
 				}
@@ -251,31 +273,28 @@ int Diff::ses(off_t aoff, size_t alen, off_t boff, size_t blen)
 	return d;
 }
 
-ssize_t Diff::diff(std::vector<DiffEdit> *ses)
+ssize_t Diff::diff(std::vector<DiffEdit> *result)
 {
+    ses_ = result;
+    result->clear();
+    
     /* The _ses function assumes the SES will begin or end with a delete
      * or insert. The following will insure this is true by eating any
      * beginning matches. This is also a quick to process sequences
      * that match entirely.
      */
 	off_t x = 0;
-    while (x < a_.size() && x < b_.size() && a_[x] == b_[x]) 
+    while (x < static_cast<off_t>(a_.size()) && x < static_cast<off_t>(b_.size()) && a_[x] == b_[x])
     {
         x++;
     }
 
     if (x > 0)
     {
-        edit(DiffEdit::Op::MATCH, aoff, x);
+        edit(DiffEdit::Op::MATCH, 0, x);
     }
 
-    d = ses(x, a_.size() - x, y, b_.size() - y);
-	if (d == -1) 
-    {
-		return -1;
-	}
-
-	return d;
+    return ses(x, a_.size() - x, x, b_.size() - x);
 }
 
 
