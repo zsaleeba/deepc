@@ -3,9 +3,9 @@ CONFIG += console
 CONFIG -= app_bundle
 CONFIG -= qt
 
-unix {
-    INCLUDEPATH += /usr/include
-}
+#unix {
+#    INCLUDEPATH += /usr/include
+#}
 
 INCLUDEPATH += $$PWD/../liblibdeepcc
 QMAKE_CXXFLAGS += -std=c++11
