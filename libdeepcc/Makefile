@@ -1,28 +1,35 @@
 BINDIR  ?= ../bin
 BUILD_DIR  ?= ../build
-DDCOBJDIR=  $(BUILD_DIR)/deepc/libdeepcc
+OBJDIR=  $(BUILD_DIR)/deepc/libdeepcc
 
 CXXFLAGS += -g -W -Wall -Wextra -std=c++11
+DEPFLAGS = -MT $@ -MMD -MP -MF $(OBJDIR)/$*.Td
 
-TARGET	= $(DDCOBJDIR)/libdeepcc.a
+TARGET	= $(OBJDIR)/libdeepcc.a
 SRCS 	= sourcepos.cpp sourcespan.cpp allsources.cpp sourcefile.cpp programdb.cpp sourcemonitor.cpp diff.cpp
-OBJS    := $(SRCS:%.cpp=$(DDCOBJDIR)/%.o)
+OBJS    := $(SRCS:%.cpp=$(OBJDIR)/%.o)
 
-all:    $(DDCOBJDIR) $(TARGET)
+all:    $(OBJDIR) $(TARGET)
 
 $(TARGET): $(OBJS)
 	$(AR) r $(TARGET) $(OBJS)
 
-$(DDCOBJDIR)/%.o: %.cpp
-	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $@ -c $<
+$(OBJDIR)/%.o: %.cpp
+$(OBJDIR)/%.o: %.cpp $(OBJDIR)/%.d
+	$(CXX) $(CXXFLAGS) $(INCLUDES) $(DEPFLAGS) -o $@ -c $<
+	@mv -f $(OBJDIR)/$*.Td $(OBJDIR)/$*.d
 
 clean:
-	rm -f $(TARGET) $(OBJS)
+	rm -f $(TARGET) $(OBJS) $(SRCS:%.cpp=$(OBJDIR)/%.d)
 
-$(DDCOBJDIR):
-	mkdir -p $(DDCOBJDIR)
+$(OBJDIR):
+	mkdir -p $(OBJDIR)
 
 protocol:
 	flatc --cpp --binary sourcefile.fbs
 
+$(OBJDIR)/%.d: ;
+.PRECIOUS: $(OBJDIR)/%.d
 .PHONY:	all clean
+
+-include $(patsubst %,$(OBJDIR)/%.d,$(basename $(SRCS)))

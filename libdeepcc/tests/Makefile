@@ -10,7 +10,7 @@ all:    $(OBJDIR) diff_test
 
 diff_test: $(BINDIR)/diff_test
 
-$(BINDIR)/diff_test: $(OBJDIR)/diff_test.o
+$(BINDIR)/diff_test: $(OBJDIR)/diff_test.o $(BUILD_DIR)/deepc/libdeepcc/libdeepcc.a
 	$(CXX) $(CXXFLAGS) -o $@ $< $(BUILD_DIR)/deepc/libdeepcc/libdeepcc.a $(LIBS)
 
 cbtree_test: $(BINDIR)/cbtree_test
