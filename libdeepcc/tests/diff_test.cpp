@@ -18,8 +18,8 @@ TEST(DiffTest, Insert)
     d.diff(&edits);
     ASSERT_EQ(edits.size(), 1);
     EXPECT_EQ(edits[0].getOp(), DiffEdit::Op::INSERT);
-    EXPECT_EQ(edits[0].getOffset(), 2);
-    EXPECT_EQ(edits[0].getLength(), 1);
+    EXPECT_EQ(edits[0].getOffset(), 12);
+    EXPECT_EQ(edits[0].getLength(), 4);
 }
 
 TEST(DiffTest, Delete)
@@ -32,8 +32,8 @@ TEST(DiffTest, Delete)
     d.diff(&edits);
     ASSERT_EQ(edits.size(), 1);
     EXPECT_EQ(edits[0].getOp(), DiffEdit::Op::DELETE);
-    EXPECT_EQ(edits[0].getOffset(), 2);
-    EXPECT_EQ(edits[0].getLength(), 1);
+    EXPECT_EQ(edits[0].getOffset(), 12);
+    EXPECT_EQ(edits[0].getLength(), 4);
 }
 
 TEST(DiffTest, Modify)
@@ -46,11 +46,11 @@ TEST(DiffTest, Modify)
     d.diff(&edits);
     ASSERT_EQ(edits.size(), 2);
     EXPECT_EQ(edits[0].getOp(), DiffEdit::Op::DELETE);
-    EXPECT_EQ(edits[0].getOffset(), 2);
-    EXPECT_EQ(edits[0].getLength(), 1);
+    EXPECT_EQ(edits[0].getOffset(), 12);
+    EXPECT_EQ(edits[0].getLength(), 3);
     EXPECT_EQ(edits[1].getOp(), DiffEdit::Op::INSERT);
-    EXPECT_EQ(edits[1].getOffset(), 2);
-    EXPECT_EQ(edits[1].getLength(), 1);
+    EXPECT_EQ(edits[1].getOffset(), 12);
+    EXPECT_EQ(edits[1].getLength(), 3);
 }
 
 TEST(DiffTest, MultiPart)
@@ -63,17 +63,17 @@ TEST(DiffTest, MultiPart)
     d.diff(&edits);
     ASSERT_EQ(edits.size(), 4);
     EXPECT_EQ(edits[0].getOp(), DiffEdit::Op::DELETE);
-    EXPECT_EQ(edits[0].getOffset(), 2);
-    EXPECT_EQ(edits[0].getLength(), 1);
+    EXPECT_EQ(edits[0].getOffset(), 12);
+    EXPECT_EQ(edits[0].getLength(), 4);
     EXPECT_EQ(edits[1].getOp(), DiffEdit::Op::INSERT);
-    EXPECT_EQ(edits[1].getOffset(), 2);
-    EXPECT_EQ(edits[1].getLength(), 1);
+    EXPECT_EQ(edits[1].getOffset(), 12);
+    EXPECT_EQ(edits[1].getLength(), 4);
     EXPECT_EQ(edits[2].getOp(), DiffEdit::Op::DELETE);
-    EXPECT_EQ(edits[2].getOffset(), 7);
+    EXPECT_EQ(edits[2].getOffset(), 31);
     EXPECT_EQ(edits[2].getLength(), 1);
     EXPECT_EQ(edits[3].getOp(), DiffEdit::Op::INSERT);
-    EXPECT_EQ(edits[3].getOffset(), 7);
-    EXPECT_EQ(edits[3].getLength(), 1);
+    EXPECT_EQ(edits[3].getOffset(), 31);
+    EXPECT_EQ(edits[3].getLength(), 3);
 }
 
 }  // namespace deepC.

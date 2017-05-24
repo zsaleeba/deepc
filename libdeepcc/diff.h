@@ -37,16 +37,16 @@ public:
 class Diff
 {
 private:
-    const std::string &a_;
-    const std::string &b_;
-    std::vector<off_t> buf_;
-    std::vector<DiffEdit> *ses_;
+    const std::string &strA_;
+    const std::string &strB_;
+    std::vector<off_t> offsetBuf_;
+    std::vector<DiffEdit> *edits_;
     
 private:
-    off_t   ses(off_t aoff, size_t alen, off_t boff, size_t blen);
+    off_t   findShortestEditSequence(off_t aoff, size_t alen, off_t boff, size_t blen);
     off_t   findMiddleSnake(off_t aoff, ssize_t alen, off_t boff, ssize_t blen, struct middle_snake *ms);
-    void    setV(int k, bool reverse, off_t val) { off_t off = k <= 0 ? -k * 4 + (reverse?1:0) : k * 4 + ((reverse?1:0) - 2); if (off >= static_cast<off_t>(buf_.size())) buf_.resize(off+1); buf_[off] = val; }
-    off_t   getV(int k, bool reverse)            { return buf_[k <= 0 ? -k * 4 + (reverse?1:0) : k * 4 + ((reverse?1:0) - 2)]; }
+    void    setV(int k, bool reverse, off_t val) { off_t off = k <= 0 ? -k * 4 + (reverse?1:0) : k * 4 + ((reverse?1:0) - 2); if (off >= static_cast<off_t>(offsetBuf_.size())) offsetBuf_.resize(off+1); offsetBuf_[off] = val; }
+    off_t   getV(int k, bool reverse)            { return offsetBuf_[k <= 0 ? -k * 4 + (reverse?1:0) : k * 4 + ((reverse?1:0) - 2)]; }
     off_t   getVForward(int k)                   { return getV(k, false); }
     off_t   getVReverse(int k)                   { return getV(k, true); }
     void    edit(DiffEdit::Op op, int off, int len);
@@ -54,7 +54,7 @@ private:
 public:
     Diff(const std::string &a, const std::string &b);
     
-    ssize_t diff(std::vector<DiffEdit> *ses);
+    ssize_t diff(std::vector<DiffEdit> *findShortestEditSequence);
 };
 
 }  // namespace deepC

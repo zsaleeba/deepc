@@ -49,14 +49,14 @@ struct middle_snake {
 };
 
 
-Diff::Diff(const std::string &a, const std::string &b) : a_(a), b_(b)
+Diff::Diff(const std::string &a, const std::string &b) : strA_(a), strB_(b)
 {
 }
 
 
 //
 // Finds the "snake" of edits which results in the smallest deviation from 
-// the 
+// the center.
 //
 
 off_t Diff::findMiddleSnake(off_t aoff, ssize_t alen, off_t boff, ssize_t blen, struct middle_snake *ms)
@@ -88,7 +88,7 @@ off_t Diff::findMiddleSnake(off_t aoff, ssize_t alen, off_t boff, ssize_t blen, 
 			ms->x = x;
 			ms->y = y;
 
-            while (x < blen && y < alen && a_[aoff + x] == b_[boff + y])
+            while (x < blen && y < alen && strA_[aoff + x] == strB_[boff + y])
             {
                 x++;
                 y++;
@@ -125,7 +125,7 @@ off_t Diff::findMiddleSnake(off_t aoff, ssize_t alen, off_t boff, ssize_t blen, 
 			ms->u = x;
 			ms->v = y;
 
-            while (x > 0 && y > 0 && a_[aoff + x - 1] == b_[boff + y - 1]) 
+            while (x > 0 && y > 0 && strA_[aoff + x - 1] == strB_[boff + y - 1])
             {
                 x--; 
                 y--;
@@ -156,17 +156,17 @@ off_t Diff::findMiddleSnake(off_t aoff, ssize_t alen, off_t boff, ssize_t blen, 
 void Diff::edit(DiffEdit::Op op, int off, int len)
 {
     // If it's the first one just add it.
-    if (ses_->empty())
+    if (edits_->empty())
     {
-        ses_->push_back(DiffEdit(op, off, len));
+        edits_->push_back(DiffEdit(op, off, len));
         return;
     }
     
     // See if we can coalesce with the previous one.
-    DiffEdit &e = ses_->back();
+    DiffEdit &e = edits_->back();
 	if (e.getOp() != op) 
     {
-        ses_->push_back(DiffEdit(op, off, len));
+        edits_->push_back(DiffEdit(op, off, len));
 	}
     else 
     {
@@ -179,7 +179,7 @@ void Diff::edit(DiffEdit::Op op, int off, int len)
 // Finds the shortest edit sequence.
 //
 
-off_t Diff::ses(off_t aoff, size_t alen, off_t boff, size_t blen)
+off_t Diff::findShortestEditSequence(off_t aoff, size_t alen, off_t boff, size_t blen)
 {
     struct middle_snake ms;
     ssize_t d;
@@ -206,7 +206,7 @@ off_t Diff::ses(off_t aoff, size_t alen, off_t boff, size_t blen)
 		} 
         else if (d > 1)
         {
-            if (ses(aoff, ms.x, boff, ms.y) == -1)
+            if (findShortestEditSequence(aoff, ms.x, boff, ms.y) == -1)
             {
 				return -1;
 			}
@@ -217,7 +217,7 @@ off_t Diff::ses(off_t aoff, size_t alen, off_t boff, size_t blen)
 			boff += ms.v;
 			blen -= ms.u;
 			alen -= ms.v;
-            if (ses(aoff, blen, boff, alen) == -1)
+            if (findShortestEditSequence(aoff, blen, boff, alen) == -1)
             {
 				return -1;
 			}
@@ -275,8 +275,8 @@ off_t Diff::ses(off_t aoff, size_t alen, off_t boff, size_t blen)
 
 ssize_t Diff::diff(std::vector<DiffEdit> *result)
 {
-    ses_ = result;
-    result->clear();
+    edits_ = result;
+    edits_->clear();
     
     /* The _ses function assumes the SES will begin or end with a delete
      * or insert. The following will insure this is true by eating any
@@ -284,7 +284,7 @@ ssize_t Diff::diff(std::vector<DiffEdit> *result)
      * that match entirely.
      */
 	off_t x = 0;
-    while (x < static_cast<off_t>(a_.size()) && x < static_cast<off_t>(b_.size()) && a_[x] == b_[x])
+    while (x < static_cast<off_t>(strA_.size()) && x < static_cast<off_t>(strB_.size()) && strA_[x] == strB_[x])
     {
         x++;
     }
@@ -294,7 +294,7 @@ ssize_t Diff::diff(std::vector<DiffEdit> *result)
         edit(DiffEdit::Op::MATCH, 0, x);
     }
 
-    return ses(x, a_.size() - x, x, b_.size() - x);
+    return findShortestEditSequence(x, strA_.size() - x, x, strB_.size() - x);
 }
 
 
