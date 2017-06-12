@@ -37,18 +37,45 @@ public:
 class Diff
 {
 private:
+    enum offsetType
+    {
+        OFFSET_FORWARD_POSITIVE = 0,
+        OFFSET_FORWARD_NEGATIVE = 1,
+        OFFSET_REVERSE_POSITIVE = 2,
+        OFFSET_REVERSE_NEGATIVE = 3,
+    };
+    
+private:
     const std::string &strA_;
     const std::string &strB_;
-    std::vector<off_t> offsetBuf_;
+    std::vector<off_t> offsetBuf_[4];
     std::vector<DiffEdit> *edits_;
     
 private:
     off_t   findShortestEditSequence(off_t aoff, size_t alen, off_t boff, size_t blen);
     off_t   findMiddleSnake(off_t aoff, ssize_t alen, off_t boff, ssize_t blen, struct middle_snake *ms);
-    void    setV(int k, bool reverse, off_t val) { off_t off = k <= 0 ? -k * 4 + (reverse?1:0) : k * 4 + ((reverse?1:0) - 2); if (off >= static_cast<off_t>(offsetBuf_.size())) offsetBuf_.resize(off+1); offsetBuf_[off] = val; }
-    off_t   getV(int k, bool reverse)            { return offsetBuf_[k <= 0 ? -k * 4 + (reverse?1:0) : k * 4 + ((reverse?1:0) - 2)]; }
-    off_t   getVForward(int k)                   { return getV(k, false); }
-    off_t   getVReverse(int k)                   { return getV(k, true); }
+    
+    off_t  &offBuf(int k, bool reverse) 
+    { 
+        int ot = reverse ? 2 : 0;
+        if (k < 0)
+        {
+            ot++;
+            k = -k;
+        }
+
+        std::vector<off_t> &v = offsetBuf_[ot]; 
+        if (k >= static_cast<int>(v.size()))
+        {
+            v.resize(k+1); 
+        }
+        
+        return v.at(k);
+    }
+
+    off_t  &offFwd(int k) { return offBuf(k, false); }
+    off_t  &offRev(int k) { return offBuf(k, true); }
+
     void    edit(DiffEdit::Op op, int off, int len);
     
 public:

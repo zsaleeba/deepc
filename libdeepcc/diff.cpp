@@ -34,6 +34,7 @@
  */
 
 #include <vector>
+#include <iostream>
 #include <stdlib.h>
 #include <limits.h>
 #include <errno.h>
@@ -61,12 +62,14 @@ Diff::Diff(const std::string &a, const std::string &b) : strA_(a), strB_(b)
 
 off_t Diff::findMiddleSnake(off_t aoff, ssize_t alen, off_t boff, ssize_t blen, struct middle_snake *ms)
 {
+    std::cout << "findMiddleSnake(" << aoff << "," << alen << "," << boff << "," << blen << ")\n";
+
 	ssize_t delta = blen - alen;
 	bool odd = (delta & 1) != 0;
     off_t mid = (blen + alen) / 2 + (odd ? 1 : 0);
 
-	setV(1, 0, 0);
-	setV(delta - 1, 1, blen);
+    offFwd(1) = 0;
+    offRev(delta - 1) = blen;
 
     for (off_t d = 0; d <= mid; d++)
     {
@@ -74,13 +77,13 @@ off_t Diff::findMiddleSnake(off_t aoff, ssize_t alen, off_t boff, ssize_t blen, 
 
         for (off_t k = d; k >= -d; k -= 2)
         {
-			if (k == -d || (k != d && getVForward(k - 1) < getVForward(k + 1))) 
+			if (k == -d || (k != d && offFwd(k - 1) < offFwd(k + 1))) 
             {
-				x = getVForward(k + 1);
+				x = offFwd(k + 1);
 			} 
             else 
             {
-				x = getVForward(k - 1) + 1;
+				x = offFwd(k - 1) + 1;
 			}
             
 			y = x - k;
@@ -94,11 +97,11 @@ off_t Diff::findMiddleSnake(off_t aoff, ssize_t alen, off_t boff, ssize_t blen, 
                 y++;
             }
 
-            setV(k, 0, x);
+            offFwd(k) = x;
 
 			if (odd && k >= (delta - (d - 1)) && k <= (delta + (d - 1))) 
             {
-				if (x >= getVReverse(k)) 
+				if (x >= offRev(k)) 
                 {
 					ms->u = x;
 					ms->v = y;
@@ -111,13 +114,13 @@ off_t Diff::findMiddleSnake(off_t aoff, ssize_t alen, off_t boff, ssize_t blen, 
         {
             int kr = (blen - alen) + k;
 
-			if (k == d || (k != -d && getVReverse(kr - 1) < getVReverse(kr + 1))) 
+			if (k == d || (k != -d && offRev(kr - 1) < offRev(kr + 1))) 
             {
-				x = getVReverse(kr - 1);
+				x = offRev(kr - 1);
 			} 
             else 
             {
-				x = getVReverse(kr + 1) - 1;
+				x = offRev(kr + 1) - 1;
 			}
             
 			y = x - kr;
@@ -131,11 +134,11 @@ off_t Diff::findMiddleSnake(off_t aoff, ssize_t alen, off_t boff, ssize_t blen, 
                 y--;
             }
 
-            setV(kr, 1, x);
+            offRev(kr) = x;
 
 			if (!odd && kr >= -d && kr <= d) 
             {
-				if (x <= getVForward(kr)) 
+				if (x <= offFwd(kr)) 
                 {
 					ms->x = x;
 					ms->y = y;
@@ -155,6 +158,16 @@ off_t Diff::findMiddleSnake(off_t aoff, ssize_t alen, off_t boff, ssize_t blen, 
 
 void Diff::edit(DiffEdit::Op op, int off, int len)
 {
+    std::string opName;
+    switch (op)
+    {
+    case DiffEdit::Op::DELETE: opName = "delete"; break;
+    case DiffEdit::Op::INSERT: opName = "insert"; break;
+    case DiffEdit::Op::MATCH: opName = "match"; break;
+    }
+
+    std::cout << "adding edit " << opName << " " << off << " " << len << std::endl;
+
     // If it's the first one just add it.
     if (edits_->empty())
     {
