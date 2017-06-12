@@ -1,6 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <assert.h>
+#include <gtest/gtest.h>
 
 #include "cbtree.h"
 
@@ -19,25 +20,23 @@ std::vector<int> *makeVec(int start, int len)
     return vec;
 }
 
-int main()
+TEST(CBTreeTest, Append)
 {
-    std::cout << "cbtree\n";
-
     cbtree<std::vector<int>, 4> cb;
 
     auto v1 = makeVec(0, 100);
     cb.append(v1, v1->size());
 
-    assert(cb.size() == 100);
+    EXPECT_EQ(cb.size(), 100);
 
-    for (int i = 0; i < 100; i++)
+#if 0
+    for (size_t i = 0; i < cb.size(); i++)
     {
-        assert(cb[i] == i);
+        EXPECT_EQ(cb[i], i);
     }
+#endif
 
     delete v1;
-
-    return 0;
 }
 
 }  // namespace deepC.

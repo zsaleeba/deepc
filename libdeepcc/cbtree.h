@@ -21,7 +21,9 @@
 // These operations are are quick, taking O(log n) time compared
 // to O(n) for a conventional array. On the other hand data is
 // accessed with O(log n) time, which is slower than an array's
-// constant access time.
+// constant access time. However the tree hierarchy is kept as 
+// flat as possible so most accesses are close to O(1) most of
+// the time.
 //
 // This variant on the counted B+-tree doesn't use keys at all,
 // hence the "counted-only" name. Also, the values we store
@@ -30,10 +32,10 @@
 // node in the node in addition to the usual B+-tree structure. This
 // allows us to track this extra information.
 //
-// This implementation allows the order of the tree to
-// be adjusted for tuning purposes. The larger the order of the
-// tree the higher the performance will be, but also the greater
-// the amount of wasted space. Increasing the order makes the
+// This implementation allows the order of the tree to be  
+// adjusted for tuning purposes. The larger the order of the  
+// tree the higher the performance will be, but also the greater 
+// the amount of wasted space. Increasing the order makes the 
 // tree shallower, but also makes the linear operations on
 // individual nodes take longer so some balancing of these two
 // factors is necessary for the best performance. Using higher
@@ -45,6 +47,7 @@
 //
 
 #include <utility>
+#include <algorithm>
 
 namespace deepC {
 
@@ -52,7 +55,7 @@ namespace deepC {
 // A generic node of a counted B+-tree
 //
 // Nodes can be either "leaf" or "branch" (internal nodes).
-// This class serves as a superclass for the two types of node.
+// This class handles both types of node.
 //
 // In this template:
 //  T is the data type of the values to store
@@ -68,11 +71,11 @@ class cbnode {
         T *value_;                    // Values in a leaf.
     };
 
-    int    num_entries_;        // The number of values or subtrees in this node.
-    bool   is_leaf_;            // True if this node is a leaf.
-    size_t total_size_;         // Size of all the elements in this node and all sub-nodes.
-    size_t    offset_[kOrder];  // The offsets of each value within the node.
-    child_ptr sub_[kOrder];     // Subtrees of a branch or values in a leaf.
+    int       num_entries_;    // The number of values or subtrees in this node.
+    bool      is_leaf_;        // True if this node is a leaf.
+    size_t    total_size_;     // Size of all the elements in this node and all sub-nodes.
+    size_t    offset_[kOrder]; // The offsets of each value within the node.
+    child_ptr sub_[kOrder];    // Subtrees of a branch or values in a leaf.
 
     cbnode<T, kOrder> *prev_;  // The previous leaf in the linked list of leaf nodes.
     cbnode<T, kOrder> *next_;  // The next leaf in the linked list of leaf nodes.
@@ -191,9 +194,9 @@ class cbnode {
             right_node->next_ = next_;
             right_node->prev_ = this;
             next_ = right_node;
-
-            return right_node;
         }
+        
+        return right_node;
     }
 
     //
@@ -635,7 +638,8 @@ class cbtree {
     }
 
     T & operator[](size_t pos) {
-        return *root_->lookup(pos);
+        size_t found_offset;
+        return *root_->lookup(pos, &found_offset);
     }
 };
 

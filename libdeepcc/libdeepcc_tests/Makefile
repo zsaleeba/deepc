@@ -6,7 +6,7 @@ LIBS		= -lgtest -lpthread
 
 CXXFLAGS += -g -W -Wall -Wextra -std=c++11
 
-all:    $(OBJDIR) diff_test
+all:    $(OBJDIR) diff_test cbtree_test
 
 diff_test: $(BINDIR)/diff_test
 
