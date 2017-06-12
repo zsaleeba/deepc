@@ -49,6 +49,7 @@
 #include <utility>
 #include <algorithm>
 #include <unistd.h>
+#include <cstring>
 
 namespace deepC {
 
@@ -183,13 +184,16 @@ class cbnode {
         total_size_ = offset_[split_entry];
 
         // Copy values/subtrees across.
-        memcpy(&right_node->sub_[0], &sub_[split_entry], sizeof(sub_[split_entry]) * right_node->num_entries_);
+        std::copy_n(&sub_[split_entry], right_node->num_entries_, &right_node->sub_[0]);
+        std::fill_n(&sub_[split_entry].subtree_, kOrder - split_entry, nullptr);
 
         // Copy offsets across and adjust.
         for (int count = 0; count < right_node->num_entries_; count++) {
             right_node->offset_[count] = offset_[count + split_entry] - total_size_;
         }
 
+        std::fill_n(&offset_[split_entry], kOrder - split_entry, 0);
+        
         // Link the new node in.
         if (is_leaf_) {
             right_node->next_ = next_;
@@ -242,6 +246,8 @@ class cbnode {
     // PARAMETERS:  int new_entry         - which entry/bucket to insert it in this node.
     //              child_ptr new_value   - the value to insert.
     //              size_t new_value_size - the number of values which this item contains.
+    // RETURNS:     cbtree<T, kOrder> *   - a new node we have to insert in the parent or 
+    //                                      nullptr if none.
     //
 
     cbnode<T, kOrder> *insertEntryChecked(int new_entry,
@@ -286,9 +292,9 @@ class cbnode {
         *deleted_size = getEntrySize(entry);
 
         // Move the values across.
-        memmove(&sub_[entry],
-                &sub_[entry + 1],
-                sizeof(sub_[entry]) * (num_entries_ - entry - 1));
+        std::memmove(&sub_[entry],
+                     &sub_[entry + 1],
+                     sizeof(sub_[entry]) * (num_entries_ - entry - 1));
 
         // Move the offsets across and adjust them.
         for (int count = entry; count < num_entries_ - 1; count++) {
@@ -445,15 +451,15 @@ class cbnode {
     // ACTION:      Look up an offset.
     //              Finds the value containing the given offset. Also
     //              returns the offset of the found object in the tree.
-    // PARAMETERS:  off_t offset        - the offset to look for.
+    // PARAMETERS:  size_t offset        - the offset to look for.
     //              T **found_item      - set to point to the found object.
-    //              off_t *found_offset - set to the base offset of the found value.
+    //              size_t *found_offset - set to the base offset of the found value.
     // RETURNS:     bool - true if found, false otherwise.
     //
 
-    bool lookup(off_t lookup_offset, T **found_item, off_t *found_offset) {
+    bool lookup(size_t lookup_offset, T **found_item, size_t *found_offset) {
         // Check for an out-of-bounds offset.
-        if (lookup_offset >= static_cast<off_t>(total_size_))
+        if (lookup_offset >= total_size_)
             return false;
 
         // Search down the tree until we find a leaf.
@@ -476,20 +482,23 @@ class cbnode {
     //
     // NAME:        insert
     // ACTION:      Insert a value into the tree.
-    // PARAMETERS:  off_t insert_offset   - the offset into the node to insert at.
+    // PARAMETERS:  size_t insert_offset  - the offset into the node to insert at.
     //              T *new_value          - the value to insert.
     //              size_t new_value_size - the number of objects in the value.
+    // RETURNS:     cbtree<T, kOrder> *   - a new node we have to insert in the parent or 
+    //                                      nullptr if none.
     //
 
-    cbnode<T, kOrder> *insert(off_t insert_offset, T *new_value,
+    cbnode<T, kOrder> *insert(size_t insert_offset, T *new_value,
                              size_t new_value_size) {
         if (is_leaf_) {
             // Find where it should go.
             int found_entry;
-            if (insert_offset >= static_cast<off_t>(total_size_))
+            if (insert_offset >= total_size_) {
                 found_entry = num_entries_;  // it'll go right at the end
-            else
+            } else {
                 found_entry = searchNode(insert_offset);
+            }
 
             // Insert it in this node.
             child_ptr cp;
@@ -505,12 +514,13 @@ class cbnode {
                 sub_[found_entry].subtree_->insert(
                     insert_offset - offset_[found_entry], new_value,
                     new_value_size);
-
+            
             if (insert_new_sub_node.subtree_) {
                 // We have a new node from below which we need to insert here.
                 return insertEntryChecked(found_entry + 1, insert_new_sub_node, new_value_size);
             } else {
-                // Nothing to insert above.
+                // Nothing to insert here from below. Just update the total size.
+                total_size_ += new_value_size;
                 return nullptr;
             }
         }
@@ -519,11 +529,11 @@ class cbnode {
     //
     // NAME:        remove
     // ACTION:      Remove an item from the node.
-    // PARAMETERS:  off_t delete_offset  - the offset to delete at.
+    // PARAMETERS:  size_t delete_offset - the offset to delete at.
     //              size_t *deleted_size - set to the number of objects deleted.
     //
 
-    T *remove(off_t delete_offset, size_t *deleted_size) {
+    T *remove(size_t delete_offset, size_t *deleted_size) {
         // Find where we're removing it from.
         int found_entry = searchNode(delete_offset);
         if (is_leaf_) {
@@ -546,6 +556,92 @@ class cbnode {
             total_size_ -= *deleted_size;
 
             return deleted_value;
+        }
+    }
+
+    //
+    // NAME:        min_depth
+    // ACTION:      Scans the tree to find the minimum depth. Used for testing.
+    // RETURNS:     int - the depth.
+    //
+    
+    int min_depth() const {
+        if (is_leaf_) {
+            return 1;
+        }
+        else {
+            int minDepth = sub_[0].subtree_->min_depth();
+            for (int i = 1; i < num_entries_; i++)
+            {
+                int depth = sub_[i].subtree_->min_depth();
+                if (depth < minDepth) {
+                    minDepth = depth;
+                }
+            }
+            
+            return minDepth + 1;
+        }
+    }
+    
+    //
+    // NAME:        max_depth
+    // ACTION:      Scans the tree to find the maximum depth. Used for testing.
+    // RETURNS:     int - the depth.
+    //
+    
+    int max_depth() const {
+        if (is_leaf_) {
+            return 1;
+        }
+        else {
+            int maxDepth = sub_[0].subtree_->min_depth();
+            for (int i = 1; i < num_entries_; i++)
+            {
+                int depth = sub_[i].subtree_->min_depth();
+                if (depth < maxDepth) {
+                    maxDepth = depth;
+                }
+            }
+            
+            return maxDepth + 1;
+        }
+    }
+    
+    //
+    // NAME:        print
+    // ACTION:      Prints out the tree. Used for testing.
+    // RETURNS:     int - the start offset of this node.
+    //              int - the depth.
+    //
+
+    void print(int offset, int depth) const {
+        if (is_leaf_) {
+            for (int i = 0; i < num_entries_; i++)
+            {
+                for (int indent = 0; indent < depth; indent++) {
+                    std::cout << "    ";
+                }
+                
+                std::cout << offset + offset_[i] << std::endl;
+            }
+        }
+        else {
+            for (int i = 0; i < num_entries_; i++)
+            {
+                for (int indent = 0; indent < depth; indent++) {
+                    std::cout << "    ";
+                }
+                
+                std::cout << "{" << std::endl;
+                
+                sub_[i].subtree_->print(offset + offset_[i], depth+1);
+
+                for (int indent = 0; indent < depth; indent++) {
+                    std::cout << "    ";
+                }
+                
+                std::cout << "}" << std::endl;
+            }
         }
     }
 };
@@ -583,14 +679,14 @@ class cbtree {
     // NAME:        insert
     // ACTION:      Insert a new entry into the cbtree. This entry is normally
     //              a data structure which can contain multiple items.
-    // PARAMETERS:  off_t insert_offset - the "array index" to insert at - ie. the
+    // PARAMETERS:  size_t insert_offset - the "array index" to insert at - ie. the
     //                  item offset. It's assumed that this offset will fall on a
     //                  boundary of one of the entries.
     //              T *new_entry - the entry to insert.
     //              size_t new_value_size - the number of items in the inserted value.
     //
 
-    void insert(off_t insert_offset, T *new_entry, size_t new_entry_size) {
+    void insert(size_t insert_offset, T *new_entry, size_t new_entry_size) {
         cbnode<T, kOrder> *new_sub_node = root_->insert(insert_offset, new_entry, new_entry_size);
 
         if (new_sub_node) {
@@ -616,11 +712,11 @@ class cbtree {
     // NAME:        remove
     // ACTION:      Removes an entry from the cbtree. This will normally be a
     //              whole container with multiple items.
-    // PARAMETERS:  off_t remove_offset - the offset of the entry to remove.
+    // PARAMETERS:  size_t remove_offset - the offset of the entry to remove.
     // RETURNS:     T * - the removed entry.
     //
 
-    T *remove(off_t remove_offset) {
+    T *remove(size_t remove_offset) {
         size_t deleted_size;
         T *    deleted_value = root_->remove(remove_offset, deleted_size);
 
@@ -637,16 +733,16 @@ class cbtree {
     //
     // NAME:        lookup
     // ACTION:      Finds the entry at a specific offset.
-    // PARAMETERS:  off_t pos           - the offset to find.
-    //              T **found_item      - the found object or nullptr if not found.
-    //              off_t *found_offset - set to the actual offset at the start
+    // PARAMETERS:  size_t pos           - the offset to find.
+    //              T **found_item       - the found object or nullptr if not found.
+    //              size_t *found_offset - set to the actual offset at the start
     //                  of the found entry. Since entries are containers the pos
     //                  might be in the middle of the container so this value
     //                  could be before pos.
     // RETURNS:     bool - true if found, false otherwise.
     //
 
-    bool lookup(off_t pos, T **found_item, off_t *found_offset) {
+    bool lookup(size_t pos, T **found_item, size_t *found_offset) {
         return root_->lookup(pos, found_item, found_offset);
     }
 
@@ -668,6 +764,30 @@ class cbtree {
         return *root_->lookup(pos, &found_offset);
     }
 #endif
+    
+    //
+    // NAME:        min_depth
+    // ACTION:      Scans the tree to find the minimum depth. Used for testing.
+    // RETURNS:     int - the depth.
+    //
+    
+    int min_depth() const {
+        return root_->min_depth();
+    }
+    
+    //
+    // NAME:        max_depth
+    // ACTION:      Scans the tree to find the maximum depth. Used for testing.
+    // RETURNS:     int - the depth.
+    //
+    
+    int max_depth() const {
+        return root_->max_depth();
+    }
+    
+    void print() const {
+        root_->print(0, 0);
+    }
 };
 
 }  // namespace deepC

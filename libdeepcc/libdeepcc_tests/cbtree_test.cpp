@@ -31,10 +31,10 @@ TEST(CBTreeTest, Append)
 
     EXPECT_EQ(cb.size(), 100);
 
-    for (off_t i = 0; i < static_cast<off_t>(cb.size()); i++)
+    for (size_t i = 0; i < cb.size(); i++)
     {
         std::vector<int> *vec;
-        off_t offset;
+        size_t offset;
         EXPECT_TRUE(cb.lookup(i, &vec, &offset));
         EXPECT_EQ(vec, v1);
         EXPECT_EQ(offset, 0);
@@ -55,10 +55,10 @@ TEST(CBTreeTest, Append2)
 
     EXPECT_EQ(cb.size(), 200);
 
-    for (off_t i = 0; i < static_cast<off_t>(cb.size()); i++)
+    for (size_t i = 0; i < cb.size(); i++)
     {
         std::vector<int> *vec;
-        off_t offset;
+        size_t offset;
         EXPECT_TRUE(cb.lookup(i, &vec, &offset));
         if (i < 100)
         {
@@ -91,10 +91,10 @@ TEST(CBTreeTest, Insert1)
 
     EXPECT_EQ(cb.size(), 300);
 
-    for (off_t i = 0; i < static_cast<off_t>(cb.size()); i++)
+    for (size_t i = 0; i < cb.size(); i++)
     {
         std::vector<int> *vec;
-        off_t offset;
+        size_t offset;
         EXPECT_TRUE(cb.lookup(i, &vec, &offset));
         if (i < 100)
         {
@@ -116,6 +116,49 @@ TEST(CBTreeTest, Insert1)
     delete v1;
     delete v2;
     delete v3;
+}
+
+TEST(CBTreeTest, InsertN)
+{
+    cbtree<std::vector<int>, 4> cb;
+    typedef std::vector<int> *vecintr_ptr;
+    vecintr_ptr vecs[64];
+    for (size_t i = 0; i < 64; i++)
+    {
+        vecs[i] = makeVec(i * 100, 100);
+    }
+    
+    for (size_t i = 0; i < 64; i+=2)
+    {
+        cb.append(vecs[i], vecs[i]->size());
+        ASSERT_EQ(cb.size(), i * 100 / 2 + 100);
+    }
+
+    for (size_t i = 1; i < 64; i+=2)
+    {
+        cb.insert(i * 100, vecs[i], vecs[i]->size());
+        ASSERT_EQ(cb.size(), 32 * 100 + i * 100 / 2 + 50);
+    }
+
+    EXPECT_EQ(cb.size(), 64 * 100);
+    
+    cb.print();
+    
+    EXPECT_EQ(cb.min_depth(), 3);
+    EXPECT_EQ(cb.max_depth(), 3);
+
+    for (size_t i = 0; i < cb.size(); i++)
+    {
+        vecintr_ptr vec;
+        size_t offset;
+        ASSERT_TRUE(cb.lookup(i, &vec, &offset));
+        ASSERT_EQ(vec->at(i - offset), i);
+    }
+
+    for (size_t i = 0; i < 64; i++)
+    {
+        delete vecs[i];
+    }
 }
 
 }  // namespace deepC.
