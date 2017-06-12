@@ -7,7 +7,7 @@
 
 namespace deepC
 {
-
+#if 0
 TEST(DiffTest, Insert)
 {
     std::string a = "hello\nthere\nare\nyou?\n";
@@ -75,5 +75,6 @@ TEST(DiffTest, MultiPart)
     EXPECT_EQ(edits[3].getOffset(), 31);
     EXPECT_EQ(edits[3].getLength(), 3);
 }
+#endif
 
 }  // namespace deepC.

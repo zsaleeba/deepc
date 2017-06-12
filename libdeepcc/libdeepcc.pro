@@ -11,9 +11,9 @@ TEMPLATE = lib
 CONFIG += staticlib
 QMAKE_CXXFLAGS += -std=c++11
 
-#unix {
-#    INCLUDEPATH += /usr/include /usr/local/include
-#}
+unix {
+    INCLUDEPATH += /usr/include /usr/local/include
+}
 
 
 SOURCES += sourcepos.cpp \

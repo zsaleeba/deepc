@@ -1,4 +1,5 @@
 TEMPLATE = subdirs
 SUBDIRS = \
     libdeepcc \
-    deepc
+    deepc \
+    libdeepcc/libdeepcc_tests

@@ -3,28 +3,33 @@ OBJDIR		= $(BUILD_DIR)/deepc/libdeepcc/tests
 BINDIR  	= $(BUILD_DIR)/deepc/bin
 INCLUDES	= -I..
 LIBS		= -lgtest -lpthread
+SRCS		= main.cpp cbtree_test.cpp diff_test.cpp
+OBJS		= $(SRCS:%.cpp=$(OBJDIR)/%.o)
+TARGET		= $(BINDIR)/libdeepcc_tests
 
-CXXFLAGS += -g -W -Wall -Wextra -std=c++11
+CXXFLAGS 	+= -g -W -Wall -Wextra -std=c++11
+DEPFLAGS 	= -MT $@ -MMD -MP -MF $(OBJDIR)/$*.Td
 
-all:    $(OBJDIR) diff_test cbtree_test
+all:    $(OBJDIR) libdeepcc_tests
 
-diff_test: $(BINDIR)/diff_test
+libdeepcc_tests: $(TARGET)
 
-$(BINDIR)/diff_test: $(OBJDIR)/diff_test.o $(BUILD_DIR)/deepc/libdeepcc/libdeepcc.a
-	$(CXX) $(CXXFLAGS) -o $@ $< $(BUILD_DIR)/deepc/libdeepcc/libdeepcc.a $(LIBS)
-
-cbtree_test: $(BINDIR)/cbtree_test
-
-$(BINDIR)/cbtree_test: $(OBJDIR)/cbtree_test.o
-	$(CXX) $(CXXFLAGS) -o $@ $< $(LIBS)
+$(TARGET): $(OBJS) $(BUILD_DIR)/deepc/libdeepcc/libdeepcc.a
+	$(CXX) $(CXXFLAGS) -o $@ $(OBJS) $(BUILD_DIR)/deepc/libdeepcc/libdeepcc.a $(LIBS)
 
 $(OBJDIR)/%.o: %.cpp
-	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $@ -c $<
+$(OBJDIR)/%.o: %.cpp $(OBJDIR)/%.d
+	$(CXX) $(CXXFLAGS) $(INCLUDES) $(DEPFLAGS) -o $@ -c $<
+	@mv -f $(OBJDIR)/$*.Td $(OBJDIR)/$*.d
 
 clean:
-	rm -f $(BINDIR)/cbtree_test $(OBJDIR)/cbtree_test.o
+	rm -f $(TARGET) $(OBJS) $(SRCS:%.cpp=$(OBJDIR)/%.d)
 
 $(OBJDIR):
 	mkdir -p $(OBJDIR) $(BINDIR)
 
-.PHONY:	all clean cbtree_test diff_test
+$(OBJDIR)/%.d: ;
+.PRECIOUS: $(OBJDIR)/%.d
+.PHONY:	all clean libdeepcc_tests
+
+-include $(patsubst %,$(OBJDIR)/%.d,$(basename $(SRCS)))
