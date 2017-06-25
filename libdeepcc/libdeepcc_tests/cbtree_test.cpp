@@ -131,12 +131,18 @@ TEST(CBTreeTest, InsertN)
     for (size_t i = 0; i < 64; i+=2)
     {
         cb.append(vecs[i], vecs[i]->size());
+        std::cout << "append " << (*vecs[i])[0] << "-" << ((*vecs[i])[0] + vecs[i]->size()) << std::endl;
+        cb.print();
+        std::cout << std::endl;
         ASSERT_EQ(cb.size(), i * 100 / 2 + 100);
     }
 
     for (size_t i = 1; i < 64; i+=2)
     {
         cb.insert(i * 100, vecs[i], vecs[i]->size());
+        std::cout << "insert " << (*vecs[i])[0] << "-" << ((*vecs[i])[0] + vecs[i]->size()) << std::endl;
+        cb.print();
+        std::cout << std::endl;
         ASSERT_EQ(cb.size(), 32 * 100 + i * 100 / 2 + 50);
     }
 

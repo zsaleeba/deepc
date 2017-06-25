@@ -50,6 +50,7 @@
 #include <algorithm>
 #include <unistd.h>
 #include <cstring>
+#include <iostream>
 
 namespace deepC {
 
@@ -73,14 +74,14 @@ class cbnode {
         T *value_;                    // Values in a leaf.
     };
 
-    int       num_entries_;    // The number of values or subtrees in this node.
-    bool      is_leaf_;        // True if this node is a leaf.
-    size_t    total_size_;     // Size of all the elements in this node and all sub-nodes.
-    size_t    offset_[kOrder]; // The offsets of each value within the node.
-    child_ptr sub_[kOrder];    // Subtrees of a branch or values in a leaf.
+    int       num_entries_;      // The number of values or subtrees in this node.
+    bool      is_leaf_;          // True if this node is a leaf.
+    size_t    total_size_;       // Size of all the elements in this node and all sub-nodes.
+    size_t    offset_[kOrder];   // The offsets of each value within the node.
+    child_ptr sub_[kOrder];      // Subtrees of a branch or values in a leaf.
 
-    cbnode<T, kOrder> *prev_;  // The previous leaf in the linked list of leaf nodes.
-    cbnode<T, kOrder> *next_;  // The next leaf in the linked list of leaf nodes.
+    cbnode<T, kOrder> *prev_;    // The previous leaf in the linked list of leaf nodes.
+    cbnode<T, kOrder> *next_;    // The next leaf in the linked list of leaf nodes.
 
   private:
     //
@@ -205,22 +206,22 @@ class cbnode {
     }
 
     //
-    // NAME:        insertEntry
-    // ACTION:      Insert an entry into this node. Assumes there's space in the node.
+    // NAME:        insertValue
+    // ACTION:      Insert a value into this leaf node. Assumes there's space in the node.
     // PARAMETERS:  int new_entry         - which entry/bucket to insert it in this node.
-    //              child_ptr new_value   - the value to insert.
+    //              T *new_value          - the value to insert.
     //              size_t new_value_size - the number of values which this item contains.
     //
 
-    void insertEntry(int new_entry, child_ptr new_value, size_t new_value_size) {
+    void insertValue(int new_entry, T *new_value, size_t new_value_size) {
         // There's room - find where we're going to insert it.
         if (new_entry >= num_entries_) {
             // Append it to the node.
-            sub_[num_entries_] = new_value;
+            sub_[num_entries_].value_ = new_value;
         } else {
             // Insert into the node - copy all the values to the right across by one.
             std::copy_n(&sub_[new_entry], num_entries_ - new_entry, &sub_[new_entry + 1]);
-            sub_[new_entry] = new_value;
+            sub_[new_entry].value_ = new_value;
 
             // Copy all the offsets to the right and adjust them.
             for (int count = new_entry; count < num_entries_; count++) {
@@ -238,44 +239,37 @@ class cbnode {
         num_entries_++;
         total_size_ += new_value_size;
     }
-
+    
     //
-    // NAME:        insertEntryChecked
-    // ACTION:      Insert an entry into this node. Checks if there's space
-    //              available and splits the node if necessary.
+    // NAME:        insertSubtree
+    // ACTION:      Insert a subtree into this branch node. Assumes there's space in the node.
     // PARAMETERS:  int new_entry         - which entry/bucket to insert it in this node.
-    //              child_ptr new_value   - the value to insert.
-    //              size_t new_value_size - the number of values which this item contains.
-    // RETURNS:     cbtree<T, kOrder> *   - a new node we have to insert in the parent or 
-    //                                      nullptr if none.
+    //              cbnode<T, kOrder> *subtree - the subtree to insert.
     //
 
-    cbnode<T, kOrder> *insertEntryChecked(int new_entry,
-                                         child_ptr new_value,
-                                         size_t new_value_size) {
-        // Is there enough room to fit it in the node?
-        if (num_entries_ < kOrder) {
-            // There's room - insert it.
-            insertEntry(new_entry, new_value, new_value_size);
-
-            // There's nothing that we need inserted up in the parent.
-            return nullptr;
+    void insertSubtree(int new_entry, cbnode<T, kOrder> *subtree) {
+        // There's room - find where we're going to insert it.
+        if (new_entry >= num_entries_) {
+            // Append it to the node.
+            sub_[num_entries_].subtree_ = subtree;
+            offset_[new_entry] = total_size_;
         } else {
-            // We have to split the node in two.
-            bool insert_left = new_entry <= num_entries_ / 2;
-            cbnode<T, kOrder> *right_branch = splitNode(insert_left);
+            // Insert into the node - copy all the values to the right across by one.
+            std::copy_n(&sub_[new_entry], num_entries_ - new_entry, &sub_[new_entry + 1]);
+            sub_[new_entry].subtree_ = subtree;
 
-            if (insert_left) {
-                // Insert in the left node.
-                insertEntry(new_entry, new_value, new_value_size);
-            } else {
-                // Insert in the right node.
-                right_branch->insertEntry(new_entry - num_entries_,
-                                          new_value, new_value_size);
+            // Copy all the offsets to the right and adjust them.
+            size_t entry_offset = offset_[new_entry];
+            for (int count = new_entry; count < num_entries_; count++) {
+                offset_[count + 1] = offset_[count] + subtree->total_size_;
             }
 
-            return right_branch;
+            // set the new offset
+            offset_[new_entry] = entry_offset;
         }
+
+        num_entries_++;
+        total_size_ += subtree->total_size_;
     }
 
     //
@@ -490,7 +484,7 @@ class cbnode {
     //
 
     cbnode<T, kOrder> *insert(size_t insert_offset, T *new_value,
-                             size_t new_value_size) {
+                             size_t new_value_size, size_t *adjust_size) {
         if (is_leaf_) {
             // Find where it should go.
             int found_entry;
@@ -501,29 +495,77 @@ class cbnode {
             }
 
             // Insert it in this node.
-            child_ptr cp;
-            cp.value_ = new_value;
-            return insertEntryChecked(found_entry, cp, new_value_size);
+            if (num_entries_ < kOrder) {
+                // There's room - insert it.
+                insertValue(found_entry, new_value, new_value_size);
+            } else {
+                // We have to split the node in two.
+                bool insert_left = found_entry <= num_entries_ / 2;
+                cbnode<T, kOrder> *right_branch = splitNode(insert_left);
+                *adjust_size = right_branch->size();
+
+                if (insert_left) {
+                    // Insert in the left node.
+                    insertValue(found_entry, new_value, new_value_size);
+                } else {
+                    // Insert in the right node.
+                    right_branch->insertValue(found_entry - num_entries_, new_value, new_value_size);
+                }
+
+                // Insert the right branch into the parent.
+                return right_branch;
+            }
         } else {
             // Find where it should go.
-            int found_entry = searchNode(insert_offset);
+            int found_entry;
+            if (insert_offset >= total_size_) {
+                found_entry = num_entries_ - 1;  // It'll go in the last one.
+            } else {
+                found_entry = searchNode(insert_offset);
+            }
 
             // Insert it in a subtree.
-            child_ptr insert_new_sub_node;
-            insert_new_sub_node.subtree_ =
+            size_t reduce_size_by = 0;
+            cbnode<T, kOrder> *subtree =
                 sub_[found_entry].subtree_->insert(
                     insert_offset - offset_[found_entry], new_value,
-                    new_value_size);
+                    new_value_size, &reduce_size_by);
             
-            if (insert_new_sub_node.subtree_) {
+            if (subtree) {
+                // Reduce the total size here since the subtree now has some items.
+                total_size_ -= reduce_size_by;
+
                 // We have a new node from below which we need to insert here.
-                return insertEntryChecked(found_entry + 1, insert_new_sub_node, new_value_size);
-            } else {
-                // Nothing to insert here from below. Just update the total size.
+                int new_entry = found_entry + 1;
+                if (num_entries_ < kOrder) {
+                    // It'll fit in this node - insert it.
+                    insertSubtree(new_entry, subtree);
+                }
+                else {
+                    // We have to split the node in two.
+                    bool insert_left = new_entry <= num_entries_ / 2;
+                    cbnode<T, kOrder> *right_branch = splitNode(insert_left);
+                    *adjust_size = right_branch->total_size_;
+
+                    if (insert_left) {
+                        // Insert in the left node.
+                        insertSubtree(new_entry, subtree);
+                    } else {
+                        // Insert in the right node.
+                        right_branch->insertSubtree(new_entry - num_entries_, subtree);
+                    }
+
+                    return right_branch;
+                }
+            }
+            else {
+                // Update the total size of this node to reflect the new item.
                 total_size_ += new_value_size;
-                return nullptr;
             }
         }
+
+        *adjust_size = 0;
+        return nullptr;
     }
 
     //
@@ -622,7 +664,7 @@ class cbnode {
                     std::cout << "    ";
                 }
                 
-                std::cout << offset + offset_[i] << std::endl;
+                std::cout << "[" << (offset + offset_[i]) << "]: " << (*sub_[i].value_).front() << "-" << (*sub_[i].value_).back() << std::endl;
             }
         }
         else {
@@ -632,7 +674,7 @@ class cbnode {
                     std::cout << "    ";
                 }
                 
-                std::cout << "{" << std::endl;
+                std::cout << "{ [" << (offset + offset_[i]) << "-" << (offset + ((i < (num_entries_-1)) ? (offset_[i+1]) : (total_size_)) - 1) << "]" << std::endl;
                 
                 sub_[i].subtree_->print(offset + offset_[i], depth+1);
 
@@ -687,11 +729,12 @@ class cbtree {
     //
 
     void insert(size_t insert_offset, T *new_entry, size_t new_entry_size) {
-        cbnode<T, kOrder> *new_sub_node = root_->insert(insert_offset, new_entry, new_entry_size);
+        size_t reduce_size_by = 0;
+        cbnode<T, kOrder> *new_sub_node = root_->insert(insert_offset, new_entry, new_entry_size, &reduce_size_by);
 
         if (new_sub_node) {
             // we have a new node from below. increase the height of the
-            // tree
+            // tree.
             root_ = new cbnode<T, kOrder>(root_, new_sub_node);
         }
     }
