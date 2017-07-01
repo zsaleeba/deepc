@@ -524,6 +524,11 @@ class cbnode {
                     insert_offset - offset_[found_entry], new_value,
                     new_value_size, &adjust_our_size);
             
+            // Adjust sizes and offsets.
+            for (int count = found_entry + 1; count < num_entries_; count++) {
+                offset_[count] += adjust_our_size;
+            }
+
             total_size_ += adjust_our_size;
             *adjust_parent_size += adjust_our_size;
             
