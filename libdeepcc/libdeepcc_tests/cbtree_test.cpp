@@ -130,6 +130,11 @@ TEST(CBTreeTest, InsertN)
     
     for (size_t i = 0; i < 64; i+=2)
     {
+        if (cb.size() == 1400)
+        {
+            printf("it's happening\n");
+        }
+        
         cb.append(vecs[i], vecs[i]->size());
         std::cout << "append " << (*vecs[i])[0] << "-" << ((*vecs[i])[0] + vecs[i]->size()) << std::endl;
         cb.print();
@@ -150,8 +155,8 @@ TEST(CBTreeTest, InsertN)
     
     cb.print();
     
-    EXPECT_EQ(cb.min_depth(), 3);
-    EXPECT_EQ(cb.max_depth(), 3);
+    EXPECT_EQ(cb.min_depth(), 4);
+    EXPECT_EQ(cb.max_depth(), 4);
 
     for (size_t i = 0; i < cb.size(); i++)
     {

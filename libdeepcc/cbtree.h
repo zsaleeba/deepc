@@ -269,7 +269,6 @@ class cbnode {
         }
 
         num_entries_++;
-        total_size_ += subtree->total_size_;
     }
 
     //
@@ -484,7 +483,9 @@ class cbnode {
     //
 
     cbnode<T, kOrder> *insert(size_t insert_offset, T *new_value,
-                             size_t new_value_size, size_t *adjust_size) {
+                             size_t new_value_size) {
+        cbnode<T, kOrder> *right_branch = nullptr;
+        
         if (is_leaf_) {
             // Find where it should go.
             int found_entry;
@@ -501,8 +502,7 @@ class cbnode {
             } else {
                 // We have to split the node in two.
                 bool insert_left = found_entry <= num_entries_ / 2;
-                cbnode<T, kOrder> *right_branch = splitNode(insert_left);
-                *adjust_size = right_branch->size();
+                right_branch = splitNode(insert_left);
 
                 if (insert_left) {
                     // Insert in the left node.
@@ -511,9 +511,6 @@ class cbnode {
                     // Insert in the right node.
                     right_branch->insertValue(found_entry - num_entries_, new_value, new_value_size);
                 }
-
-                // Insert the right branch into the parent.
-                return right_branch;
             }
         } else {
             // Find where it should go.
@@ -525,16 +522,12 @@ class cbnode {
             }
 
             // Insert it in a subtree.
-            size_t reduce_size_by = 0;
             cbnode<T, kOrder> *subtree =
                 sub_[found_entry].subtree_->insert(
                     insert_offset - offset_[found_entry], new_value,
-                    new_value_size, &reduce_size_by);
+                    new_value_size);
             
             if (subtree) {
-                // Reduce the total size here since the subtree now has some items.
-                total_size_ -= reduce_size_by;
-
                 // We have a new node from below which we need to insert here.
                 int new_entry = found_entry + 1;
                 if (num_entries_ < kOrder) {
@@ -544,8 +537,7 @@ class cbnode {
                 else {
                     // We have to split the node in two.
                     bool insert_left = new_entry <= num_entries_ / 2;
-                    cbnode<T, kOrder> *right_branch = splitNode(insert_left);
-                    *adjust_size = right_branch->total_size_;
+                    right_branch = splitNode(insert_left);
 
                     if (insert_left) {
                         // Insert in the left node.
@@ -554,18 +546,14 @@ class cbnode {
                         // Insert in the right node.
                         right_branch->insertSubtree(new_entry - num_entries_, subtree);
                     }
-
-                    return right_branch;
                 }
             }
-            else {
-                // Update the total size of this node to reflect the new item.
-                total_size_ += new_value_size;
-            }
+
+            // Update the total size of this node to reflect the new item.
+            total_size_ += new_value_size;
         }
 
-        *adjust_size = 0;
-        return nullptr;
+        return right_branch;
     }
 
     //
@@ -729,12 +717,10 @@ class cbtree {
     //
 
     void insert(size_t insert_offset, T *new_entry, size_t new_entry_size) {
-        size_t reduce_size_by = 0;
-        cbnode<T, kOrder> *new_sub_node = root_->insert(insert_offset, new_entry, new_entry_size, &reduce_size_by);
+        cbnode<T, kOrder> *new_sub_node = root_->insert(insert_offset, new_entry, new_entry_size);
 
         if (new_sub_node) {
-            // we have a new node from below. increase the height of the
-            // tree.
+            // We have a new node from below. increase the height of the tree.
             root_ = new cbnode<T, kOrder>(root_, new_sub_node);
         }
     }
