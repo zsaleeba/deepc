@@ -253,8 +253,8 @@ class cbnode {
             sub_[new_entry].subtree_ = subtree;
 
             // Copy all the offsets to the right and adjust them.
-            for (int count = new_entry; count < num_entries_; count++) {
-                offset_[count + 1] = offset_[count] + subtree->size();
+            for (int count = num_entries_; count > new_entry; count--) {
+                offset_[count] = offset_[count-1] + subtree->size();
             }
         }
 
@@ -367,7 +367,13 @@ class cbnode {
         }
     }
 
-    size_t size() const { return total_size_; }
+    // Accessors.
+    size_t   size() const               { return total_size_; }
+    bool     isLeaf() const             { return is_leaf_; }
+    size_t   getNumEntries() const      { return num_entries_; }
+    size_t   getOffset(size_t i) const  { return offset_[i]; }
+    const T *getSubtree(size_t i) const { return sub_[i].value_; }
+    const cbnode<T, kOrder> *getSubnode(size_t i) const { return sub_[i].subtree_; }
 
     //
     // NAME:        Branch node constructor
@@ -573,8 +579,7 @@ class cbnode {
         int found_entry = searchNode(delete_offset);
         if (is_leaf_) {
             // Delete from a leaf.
-            *deleted_size = getEntrySize(found_entry);
-            return deleteEntry(found_entry);
+            return deleteEntry(found_entry, deleted_size);
         } else {
             // Recursively delete from a branch.
             cbnode<T, kOrder> *found_subtree = sub_[found_entry].subtree_;
@@ -823,6 +828,11 @@ class cbtree {
     
     void print() const {
         root_->print(0, 0);
+    }
+    
+    // Accessor for testing.
+    cbnode<T, kOrder> *getRoot() const {
+        return root_;
     }
 };
 
