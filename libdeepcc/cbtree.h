@@ -51,8 +51,13 @@
 #include <unistd.h>
 #include <cstring>
 #include <iostream>
+#include <cstddef>
 
 namespace deepC {
+
+// Forward declaration of the iterator type.
+ 
+template <class T, int kOrder> class cbtree_iter;
 
 //
 // A generic node of a counted B+-tree
@@ -82,7 +87,9 @@ class cbnode {
     size_t             offset_[kOrder];   // The offsets of each value within the node.
     child_ptr          sub_[kOrder];      // Subtrees of a branch or values in a leaf.
 
-  private:
+    friend class cbtree_iter<T, kOrder>;
+
+private:
     //
     // NAME:        getEntrySize
     // ACTION:      Get the size of a single entry in the node.
@@ -367,12 +374,12 @@ class cbnode {
     }
 
     // Accessors.
-    size_t   size() const               { return total_size_; }
-    bool     isLeaf() const             { return is_leaf_; }
-    size_t   getNumEntries() const      { return num_entries_; }
-    size_t   getOffset(size_t i) const  { return offset_[i]; }
-    const T *getSubtree(size_t i) const { return sub_[i].value_; }
-    const cbnode<T, kOrder> *getSubnode(size_t i) const { return sub_[i].subtree_; }
+    size_t   size() const                { return total_size_; }
+    bool     isLeaf() const              { return is_leaf_; }
+    size_t   getNumEntries() const       { return num_entries_; }
+    size_t   getOffset(size_t i) const   { return offset_[i]; }
+    T *      getSubValue(size_t i) const { return sub_[i].value_; }
+    cbnode<T, kOrder> *getSubTree(size_t i) const { return sub_[i].subtree_; }
 
     //
     // NAME:        Branch node constructor
@@ -597,54 +604,6 @@ class cbnode {
             return deleted_value;
         }
     }
-
-    //
-    // NAME:        min_depth
-    // ACTION:      Scans the tree to find the minimum depth. Used for testing.
-    // RETURNS:     int - the depth.
-    //
-    
-    int min_depth() const {
-        if (is_leaf_) {
-            return 1;
-        }
-        else {
-            int minDepth = sub_[0].subtree_->min_depth();
-            for (unsigned int i = 1; i < num_entries_; i++)
-            {
-                int depth = sub_[i].subtree_->min_depth();
-                if (depth < minDepth) {
-                    minDepth = depth;
-                }
-            }
-            
-            return minDepth + 1;
-        }
-    }
-    
-    //
-    // NAME:        max_depth
-    // ACTION:      Scans the tree to find the maximum depth. Used for testing.
-    // RETURNS:     int - the depth.
-    //
-    
-    int max_depth() const {
-        if (is_leaf_) {
-            return 1;
-        }
-        else {
-            int maxDepth = sub_[0].subtree_->min_depth();
-            for (unsigned int i = 1; i < num_entries_; i++)
-            {
-                int depth = sub_[i].subtree_->min_depth();
-                if (depth < maxDepth) {
-                    maxDepth = depth;
-                }
-            }
-            
-            return maxDepth + 1;
-        }
-    }
     
     //
     // NAME:        print
@@ -697,15 +656,30 @@ class cbnode {
 
 template <class T, int kOrder>
 class cbtree {
+  public:
+    // For STL and iterators.
+    friend class cbtree_iter<T, kOrder>;
+    typedef cbtree_iter<T, kOrder> iterator;
+    typedef ptrdiff_t difference_type;
+    typedef size_t size_type;
+    typedef T value_type;
+    typedef T * pointer;
+    typedef T & reference;
+    
   private:
+    // The root node.
     cbnode<T, kOrder> *root_;
 
   public:
     // Create an empty cbtree.
-    cbtree() { root_ = new cbnode<T, kOrder>(true); }
+    cbtree() { 
+        root_ = new cbnode<T, kOrder>(true); 
+    }
 
     // Destructor.
-    ~cbtree() { delete root_; }
+    ~cbtree() {
+        delete root_; 
+    }
 
     //
     // NAME:        size
@@ -713,7 +687,9 @@ class cbtree {
     // RETURNS:     size_t - the number of items in the cbtree.
     //
 
-    size_t size() { return root_->size(); }
+    size_t size() { 
+        return root_->size(); 
+    }
 
     //
     // NAME:        insert
@@ -785,45 +761,37 @@ class cbtree {
     bool lookup(size_t pos, T **found_item, size_t *found_offset) {
         return root_->lookup(pos, found_item, found_offset);
     }
-
-#if 0
-    //
-    // NAME:        lookup
-    // ACTION:      Finds the entry at a specific offset.
-    // PARAMETERS:  size_t pos - the offset to find.
-    // RETURNS:     T * - the found object or nullptr if not found.
-    //
-
-    T *lookup(size_t pos) {
-        size_t found_offset;
-        return root_->lookup(pos, &found_offset);
-    }
-
-    T & operator[](size_t pos) {
-        size_t found_offset;
-        return *root_->lookup(pos, &found_offset);
-    }
-#endif
     
     //
-    // NAME:        min_depth
-    // ACTION:      Scans the tree to find the minimum depth. Used for testing.
-    // RETURNS:     int - the depth.
+    // NAME:        begin
+    // ACTION:      Returns an iterator to the first leaf node in the tree.
+    // RETURNS:     iterator
     //
     
-    int min_depth() const {
-        return root_->min_depth();
+    iterator begin() const {
+        // Find the leftmost leaf node.
+        cbnode<T, kOrder> *node = root_;
+        while (!node->isLeaf()) {
+            node = node->getSubTree(0);
+        }
+        
+        return iterator(node, 0);
     }
     
     //
-    // NAME:        max_depth
-    // ACTION:      Scans the tree to find the maximum depth. Used for testing.
-    // RETURNS:     int - the depth.
+    // NAME:        end
+    // ACTION:      Returns an iterator to the end of the tree.
+    // RETURNS:     iterator
     //
     
-    int max_depth() const {
-        return root_->max_depth();
+    iterator end() const {
+        return iterator(nullptr, 0);
     }
+    
+    //
+    // NAME:        print
+    // ACTION:      Diagnostic print of the tree.
+    //
     
     void print() const {
         root_->print(0, 0);
@@ -832,6 +800,67 @@ class cbtree {
     // Accessor for testing.
     cbnode<T, kOrder> *getRoot() const {
         return root_;
+    }
+};
+
+
+//
+// Iterator for cbtree.
+//
+
+template <class T, int kOrder>
+class cbtree_iter
+{
+    cbnode<T, kOrder> *node_;
+    unsigned int       entry_;
+    
+public:
+    // Default constructor. Same as end().
+    cbtree_iter() :
+        node_(nullptr),
+        entry_(0)
+    {
+    }
+    
+    // Constructor for an arbitrary node.
+    cbtree_iter(cbnode<T, kOrder> *node, unsigned int entry) :
+        node_(node),
+        entry_(entry)
+    {
+    }
+    
+    // Equality operators.
+    bool operator=(const cbtree_iter<T, kOrder> &x) const {
+        return node_ == x.node_ && entry_ == x.entry_;
+    }
+    
+    bool operator!=(const cbtree_iter<T, kOrder> &x) const {
+        return node_ != x.node_ || entry_ != x.entry_;
+    }
+    
+    // Dereference operator.
+    T * operator*() const {
+        return node_->getSubValue(entry_);
+    }
+    
+    // Increment operator.
+    cbtree_iter<T, kOrder> operator++() { 
+        entry_++;
+        if (entry_ >= node_->num_entries_) {
+            node_ = node_->next_;
+            entry_ = 0;
+        }
+        return *this; 
+    }
+    
+    cbtree_iter<T, kOrder> operator++(int) {
+      cbtree_iter<T, kOrder> clone(*this);
+      entry_++;
+      if (entry_ >= node_->num_entries_) {
+          node_ = node_->next_;
+          entry_ = 0;
+      }
+      return clone;
     }
 };
 

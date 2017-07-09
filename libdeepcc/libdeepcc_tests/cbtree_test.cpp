@@ -32,7 +32,7 @@ size_t consistency_check(const cbnode< std::vector<int>, order> *t) {
     size_t total = 0;
     for (size_t i = 0; i < t->getNumEntries(); i++) {
         EXPECT_EQ(total, t->getOffset(i));
-        total += consistency_check(t->getSubnode(i));
+        total += consistency_check(t->getSubTree(i));
     }
     
     EXPECT_EQ(total, t->size());
@@ -173,8 +173,6 @@ TEST(CBTree, InsertN)
     
 //    cb.print();
     
-    EXPECT_EQ(cb.min_depth(), cb.max_depth());
-
     for (size_t i = 0; i < cb.size(); i++)
     {
         vecintr_ptr vec;
@@ -292,6 +290,43 @@ TEST(CBTree, InsertSpeed)
     
     EXPECT_EQ(totalSize, cb.size());
 }
+
+
+TEST(CBTree, Iterator)
+{
+    cbtree< std::vector<int>, order> cb;
+    std::vector<int> cmp;
+    
+    srandom(42);
+    
+    for (int pass = 0; pass < 10000; pass++) {
+        // Insert in the cbtree.
+        size_t insertAt = random() % (pass + 1);
+        std::vector<int> *insertVal = new std::vector<int>{pass};
+//        std::cout << "insert " << pass << " at " << insertAt << " size=" << insertVal->size() << std::endl;
+        
+        cb.insert(insertAt, insertVal, insertVal->size());
+        
+//        cb.print();
+//        std::cout << std::endl;
+
+        // Do the same to the vector.
+        cmp.resize(pass + 1);
+        for (size_t i = pass; i > insertAt; i--)
+        {
+            cmp[i] = cmp[i-1];
+        }
+
+        cmp[insertAt] = pass;
+    }
+    
+    cbtree< std::vector<int>, order>::iterator iter;
+    size_t i;
+    for (iter = cb.begin(), i = 0; iter != cb.end(); iter++, i++) {
+//        ASSERT_EQ((*iter)[0], cmp[i]);
+    }
+}
+
 
 }  // namespace deepC.
 
