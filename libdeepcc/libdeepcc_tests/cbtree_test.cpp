@@ -21,7 +21,7 @@ std::vector<int> *makeVec(int start, int len)
 }
 
 
-size_t consistency_check(const cbnode< std::vector<int>, 4 > *t) {
+size_t consistency_check(const cbnode< std::vector<int>, 6 > *t) {
     if (t->isLeaf()) {
         return t->size();
     } 
@@ -40,7 +40,7 @@ size_t consistency_check(const cbnode< std::vector<int>, 4 > *t) {
 
 TEST(CBTree, Append)
 {
-    cbtree<std::vector<int>, 4> cb;
+    cbtree<std::vector<int>, 6> cb;
 
     auto v1 = makeVec(0, 100);
     cb.append(v1, v1->size());
@@ -61,7 +61,7 @@ TEST(CBTree, Append)
 
 TEST(CBTree, Append2)
 {
-    cbtree<std::vector<int>, 4> cb;
+    cbtree<std::vector<int>, 6> cb;
 
     auto v1 = makeVec(0, 100);
     cb.append(v1, v1->size());
@@ -94,7 +94,7 @@ TEST(CBTree, Append2)
 
 TEST(CBTree, Insert1)
 {
-    cbtree<std::vector<int>, 4> cb;
+    cbtree<std::vector<int>, 6> cb;
 
     auto v1 = makeVec(0, 100);
     cb.append(v1, v1->size());
@@ -136,7 +136,7 @@ TEST(CBTree, Insert1)
 
 TEST(CBTree, InsertN)
 {
-    cbtree<std::vector<int>, 4> cb;
+    cbtree<std::vector<int>, 6> cb;
     typedef std::vector<int> *vecintr_ptr;
     vecintr_ptr vecs[64];
     for (size_t i = 0; i < 64; i++)
@@ -170,8 +170,8 @@ TEST(CBTree, InsertN)
     
 //    cb.print();
     
-    EXPECT_EQ(cb.min_depth(), 4);
-    EXPECT_EQ(cb.max_depth(), 4);
+    EXPECT_EQ(cb.min_depth(), 3);
+    EXPECT_EQ(cb.max_depth(), 3);
 
     for (size_t i = 0; i < cb.size(); i++)
     {

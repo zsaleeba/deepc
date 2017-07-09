@@ -74,14 +74,14 @@ class cbnode {
         T *value_;                    // Values in a leaf.
     };
 
-    int       num_entries_;      // The number of values or subtrees in this node.
-    bool      is_leaf_;          // True if this node is a leaf.
-    size_t    total_size_;       // Size of all the elements in this node and all sub-nodes.
-    size_t    offset_[kOrder];   // The offsets of each value within the node.
-    child_ptr sub_[kOrder];      // Subtrees of a branch or values in a leaf.
-
-    cbnode<T, kOrder> *prev_;    // The previous leaf in the linked list of leaf nodes.
-    cbnode<T, kOrder> *next_;    // The next leaf in the linked list of leaf nodes.
+    unsigned char num_entries_;      // The number of values or subtrees in this node.
+    unsigned char is_leaf_;          // True if this node is a leaf.
+    size_t        total_size_;       // Size of all the elements in this node and all sub-nodes.
+    size_t        offset_[kOrder];   // The offsets of each value within the node.
+    child_ptr     sub_[kOrder];      // Subtrees of a branch or values in a leaf.
+                  
+    cbnode<T,     kOrder> *prev_;    // The previous leaf in the linked list of leaf nodes.
+    cbnode<T,     kOrder> *next_;    // The next leaf in the linked list of leaf nodes.
 
   private:
     //

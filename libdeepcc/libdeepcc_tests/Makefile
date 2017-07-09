@@ -14,6 +14,9 @@ all:    $(OBJDIR) libdeepcc_tests
 
 libdeepcc_tests: $(TARGET)
 
+test:	$(TARGET)
+	$(TARGET)
+
 $(TARGET): $(OBJS) $(BUILD_DIR)/deepc/libdeepcc/libdeepcc.a
 	$(CXX) $(CXXFLAGS) -o $@ $(OBJS) $(BUILD_DIR)/deepc/libdeepcc/libdeepcc.a $(LIBS)
 
@@ -30,6 +33,6 @@ $(OBJDIR):
 
 $(OBJDIR)/%.d: ;
 .PRECIOUS: $(OBJDIR)/%.d
-.PHONY:	all clean libdeepcc_tests
+.PHONY:	all clean libdeepcc_tests test
 
 -include $(patsubst %,$(OBJDIR)/%.d,$(basename $(SRCS)))
