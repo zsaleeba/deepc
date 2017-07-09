@@ -8,6 +8,9 @@
 namespace deepC
 {
 
+constexpr unsigned int order = 30;
+
+
 std::vector<int> *makeVec(int start, int len)
 {
     std::vector<int> *vec = new std::vector<int>();
@@ -21,7 +24,7 @@ std::vector<int> *makeVec(int start, int len)
 }
 
 
-size_t consistency_check(const cbnode< std::vector<int>, 6 > *t) {
+size_t consistency_check(const cbnode< std::vector<int>, order> *t) {
     if (t->isLeaf()) {
         return t->size();
     } 
@@ -40,7 +43,7 @@ size_t consistency_check(const cbnode< std::vector<int>, 6 > *t) {
 
 TEST(CBTree, Append)
 {
-    cbtree<std::vector<int>, 6> cb;
+    cbtree<std::vector<int>, order> cb;
 
     auto v1 = makeVec(0, 100);
     cb.append(v1, v1->size());
@@ -61,7 +64,7 @@ TEST(CBTree, Append)
 
 TEST(CBTree, Append2)
 {
-    cbtree<std::vector<int>, 6> cb;
+    cbtree<std::vector<int>, order> cb;
 
     auto v1 = makeVec(0, 100);
     cb.append(v1, v1->size());
@@ -94,7 +97,7 @@ TEST(CBTree, Append2)
 
 TEST(CBTree, Insert1)
 {
-    cbtree<std::vector<int>, 6> cb;
+    cbtree<std::vector<int>, order> cb;
 
     auto v1 = makeVec(0, 100);
     cb.append(v1, v1->size());
@@ -136,15 +139,15 @@ TEST(CBTree, Insert1)
 
 TEST(CBTree, InsertN)
 {
-    cbtree<std::vector<int>, 6> cb;
+    cbtree<std::vector<int>, order> cb;
     typedef std::vector<int> *vecintr_ptr;
-    vecintr_ptr vecs[64];
-    for (size_t i = 0; i < 64; i++)
+    vecintr_ptr vecs[5000];
+    for (size_t i = 0; i < 5000; i++)
     {
         vecs[i] = makeVec(i * 100, 100);
     }
     
-    for (size_t i = 0; i < 64; i+=2)
+    for (size_t i = 0; i < 5000; i+=2)
     {
         cb.append(vecs[i], vecs[i]->size());
 //        std::cout << "append " << (*vecs[i])[0] << "-" << ((*vecs[i])[0] + vecs[i]->size()) << std::endl;
@@ -155,23 +158,22 @@ TEST(CBTree, InsertN)
         consistency_check(cb.getRoot());
     }
 
-    for (size_t i = 1; i < 64; i+=2)
+    for (size_t i = 1; i < 5000; i+=2)
     {
         cb.insert(i * 100, vecs[i], vecs[i]->size());
 //        std::cout << "insert " << (*vecs[i])[0] << "-" << ((*vecs[i])[0] + vecs[i]->size()) << std::endl;
 //        cb.print();
 //        std::cout << std::endl;
-        ASSERT_EQ(cb.size(), 32 * 100 + i * 100 / 2 + 50);
+        ASSERT_EQ(cb.size(), 5000 / 2 * 100 + i * 100 / 2 + 50);
 
         consistency_check(cb.getRoot());
     }
 
-    EXPECT_EQ(cb.size(), 64 * 100);
+    EXPECT_EQ(cb.size(), 5000 * 100);
     
 //    cb.print();
     
-    EXPECT_EQ(cb.min_depth(), 3);
-    EXPECT_EQ(cb.max_depth(), 3);
+    EXPECT_EQ(cb.min_depth(), cb.max_depth());
 
     for (size_t i = 0; i < cb.size(); i++)
     {
@@ -183,7 +185,7 @@ TEST(CBTree, InsertN)
     
     consistency_check(cb.getRoot());
 
-    for (size_t i = 0; i < 64; i++)
+    for (size_t i = 0; i < 5000; i++)
     {
         delete vecs[i];
     }
@@ -192,7 +194,7 @@ TEST(CBTree, InsertN)
 
 TEST(CBTree, InsertRandom)
 {
-    cbtree< std::vector<int>, 4> cb;
+    cbtree< std::vector<int>, order> cb;
     std::vector<int> cmp;
     
     srandom(42);
@@ -261,6 +263,34 @@ TEST(CBTree, InsertRandom)
     }
 
     //cb.print();
+}
+
+
+TEST(CBTree, InsertSpeed)
+{
+    cbtree< std::vector<int>, order> cb;
+    uint32_t randval = 654321;
+    size_t totalSize = 0;
+    std::vector<int> *insertVal = new std::vector<int>{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
+    
+    for (int pass = 0; pass < 1000000; pass++) {
+        // Insert in the cbtree.
+        randval = 1103515245 * randval + 12345;
+        uint32_t numInserted = randval & 0xf;
+        randval = 1103515245 * randval + 12345;
+        uint32_t insertAt;
+        if (cb.size() > 0) {
+            insertAt = randval % cb.size();
+        }
+        else {
+            insertAt = 0;
+        }
+        
+        cb.insert(insertAt, insertVal, numInserted);
+        totalSize += numInserted;
+    }
+    
+    EXPECT_EQ(totalSize, cb.size());
 }
 
 }  // namespace deepC.

@@ -65,7 +65,7 @@ namespace deepC {
 //  order is the maximum number of children in the B+-tree
 //
 
-template <class T, int kOrder>
+template <class T, unsigned int kOrder>
 class cbnode {
     // A pointer which can pointer to either a subtree or a value.
     // These are used to point down the tree.
@@ -74,14 +74,13 @@ class cbnode {
         T *value_;                    // Values in a leaf.
     };
 
-    unsigned char num_entries_;      // The number of values or subtrees in this node.
-    unsigned char is_leaf_;          // True if this node is a leaf.
-    size_t        total_size_;       // Size of all the elements in this node and all sub-nodes.
-    size_t        offset_[kOrder];   // The offsets of each value within the node.
-    child_ptr     sub_[kOrder];      // Subtrees of a branch or values in a leaf.
-                  
-    cbnode<T,     kOrder> *prev_;    // The previous leaf in the linked list of leaf nodes.
-    cbnode<T,     kOrder> *next_;    // The next leaf in the linked list of leaf nodes.
+    unsigned char      is_leaf_;          // True if this node is a leaf.
+    uint32_t           num_entries_;      // The number of values or subtrees in this node.
+    size_t             total_size_;       // Size of all the elements in this node and all sub-nodes.
+    cbnode<T, kOrder> *prev_;             // The previous leaf in the linked list of leaf nodes.
+    cbnode<T, kOrder> *next_;             // The next leaf in the linked list of leaf nodes.
+    size_t             offset_[kOrder];   // The offsets of each value within the node.
+    child_ptr          sub_[kOrder];      // Subtrees of a branch or values in a leaf.
 
   private:
     //
@@ -189,7 +188,7 @@ class cbnode {
         std::fill_n(&sub_[split_entry].subtree_, kOrder - split_entry, nullptr);
 
         // Copy offsets across and adjust.
-        for (int count = 0; count < right_node->num_entries_; count++) {
+        for (unsigned int count = 0; count < right_node->num_entries_; count++) {
             right_node->offset_[count] = offset_[count + split_entry] - total_size_;
         }
 
@@ -208,12 +207,12 @@ class cbnode {
     //
     // NAME:        insertValue
     // ACTION:      Insert a value into this leaf node. Assumes there's space in the node.
-    // PARAMETERS:  int new_entry         - which entry/bucket to insert it in this node.
-    //              T *new_value          - the value to insert.
-    //              size_t new_value_size - the number of values which this item contains.
+    // PARAMETERS:  unsigned int new_entry - which entry/bucket to insert it in this node.
+    //              T *new_value           - the value to insert.
+    //              size_t new_value_size  - the number of values which this item contains.
     //
 
-    void insertValue(int new_entry, T *new_value, size_t new_value_size) {
+    void insertValue(unsigned int new_entry, T *new_value, size_t new_value_size) {
         // There's room - find where we're going to insert it.
         if (new_entry >= num_entries_) {
             // Append it to the node.
@@ -225,8 +224,8 @@ class cbnode {
             sub_[new_entry].value_ = new_value;
 
             // Copy all the offsets to the right and adjust them.
-            for (int count = new_entry; count < num_entries_; count++) {
-                offset_[count + 1] = offset_[count] + new_value_size;
+            for (unsigned int count = num_entries_; count > new_entry; count--) {
+                offset_[count] = offset_[count-1] + new_value_size;
             }
         }
 
@@ -237,11 +236,11 @@ class cbnode {
     //
     // NAME:        insertSubtree
     // ACTION:      Insert a subtree into this branch node. Assumes there's space in the node.
-    // PARAMETERS:  int new_entry         - which entry/bucket to insert it in this node.
+    // PARAMETERS:  unsigned int new_entry     - which entry/bucket to insert it in this node.
     //              cbnode<T, kOrder> *subtree - the subtree to insert.
     //
 
-    void insertSubtree(int new_entry, cbnode<T, kOrder> *subtree) {
+    void insertSubtree(unsigned int new_entry, cbnode<T, kOrder> *subtree) {
         // There's room - find where we're going to insert it.
         if (new_entry >= num_entries_) {
             // Append it to the node.
@@ -253,7 +252,7 @@ class cbnode {
             sub_[new_entry].subtree_ = subtree;
 
             // Copy all the offsets to the right and adjust them.
-            for (int count = num_entries_; count > new_entry; count--) {
+            for (unsigned int count = num_entries_; count > new_entry; count--) {
                 offset_[count] = offset_[count-1] + subtree->size();
             }
         }
@@ -265,11 +264,11 @@ class cbnode {
     //
     // NAME:        deleteEntry
     // ACTION:      Delete an entry from this node.
-    // PARAMETERS:  int entry            - which entry/bucket to insert it in this node.
+    // PARAMETERS:  unsigned int entry   - which entry/bucket to insert it in this node.
     //              size_t *deleted_size - set to the number of values the item contains.
     //
 
-    child_ptr deleteEntry(int entry, size_t *deleted_size) {
+    child_ptr deleteEntry(unsigned int entry, size_t *deleted_size) {
         child_ptr deleted_value = sub_[entry];
 
         // How much are we deleting?
@@ -295,10 +294,10 @@ class cbnode {
     // NAME:        rebalance
     // ACTION:      Rebalances the tree for optimal performance.
     //              Should only be called on branches which are underweight.
-    // PARAMETERS:  int underweight_entry - the entry which is underweight.
+    // PARAMETERS:  unsigned int underweight_entry - the entry which is underweight.
     //
 
-    void rebalance(int underweight_entry) {
+    void rebalance(unsigned int underweight_entry) {
         cbnode<T, kOrder> *underweight_subtree = sub_[underweight_entry].subtree_;
 
         // Is there an entry to the left of the underweight one?
@@ -350,7 +349,7 @@ class cbnode {
   public:
     //cbnode() : num_entries_(0), is_leaf_(false), total_size_(0) {}
     explicit cbnode(bool p_is_leaf)
-        : num_entries_(0), is_leaf_(p_is_leaf), total_size_(0), prev_(nullptr), next_(nullptr)
+        : is_leaf_(p_is_leaf), num_entries_(0), total_size_(0), prev_(nullptr), next_(nullptr)
     {
         std::fill_n(&offset_[0], kOrder, 0);
         if (!p_is_leaf)
@@ -385,7 +384,7 @@ class cbnode {
     //
 
     cbnode(cbnode<T, kOrder> *left, cbnode<T, kOrder> *right)
-        : num_entries_(2), is_leaf_(false), prev_(nullptr), next_(nullptr) {
+        : is_leaf_(false), num_entries_(2), prev_(nullptr), next_(nullptr) {
         total_size_ = left->total_size_ + right->total_size_;
         sub_[0].subtree_ = left;
         sub_[1].subtree_ = right;
@@ -401,7 +400,7 @@ class cbnode {
     ~cbnode() {
         // Delete all the subtrees.
         if (!is_leaf_) {
-            for (int count = 0; count < num_entries_; count++)
+            for (unsigned int count = 0; count < num_entries_; count++)
                 delete sub_[count].subtree_;
         }
     }
@@ -487,7 +486,7 @@ class cbnode {
         
         if (is_leaf_) {
             // Find where it should go.
-            int found_entry;
+            unsigned int found_entry;
             if (insert_offset >= total_size_) {
                 found_entry = num_entries_;  // it'll go right at the end
             } else {
@@ -531,7 +530,7 @@ class cbnode {
                     new_value_size, &adjust_our_size);
             
             // Adjust sizes and offsets.
-            for (int count = found_entry + 1; count < num_entries_; count++) {
+            for (unsigned int count = found_entry + 1; count < num_entries_; count++) {
                 offset_[count] += adjust_our_size;
             }
 
@@ -540,7 +539,7 @@ class cbnode {
             
             if (subtree) {
                 // We have a new node from below which we need to insert here.
-                int new_entry = found_entry + 1;
+                unsigned int new_entry = found_entry + 1;
                 if (num_entries_ < kOrder) {
                     // It'll fit in this node - insert it.
                     insertSubtree(new_entry, subtree);
@@ -611,7 +610,7 @@ class cbnode {
         }
         else {
             int minDepth = sub_[0].subtree_->min_depth();
-            for (int i = 1; i < num_entries_; i++)
+            for (unsigned int i = 1; i < num_entries_; i++)
             {
                 int depth = sub_[i].subtree_->min_depth();
                 if (depth < minDepth) {
@@ -635,7 +634,7 @@ class cbnode {
         }
         else {
             int maxDepth = sub_[0].subtree_->min_depth();
-            for (int i = 1; i < num_entries_; i++)
+            for (unsigned int i = 1; i < num_entries_; i++)
             {
                 int depth = sub_[i].subtree_->min_depth();
                 if (depth < maxDepth) {
