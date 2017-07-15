@@ -200,11 +200,16 @@ private:
         }
 
         std::fill_n(&offset_[split_entry], kOrder - split_entry, 0);
-        
-        // Link the new node in.
+
+        // Are we a leaf?
         if (is_leaf_) {
+            // Link the new node in.
             right_node->next_ = next_;
             right_node->prev_ = this;
+            if (next_) {
+                next_->prev_ = right_node;
+            }
+
             next_ = right_node;
         }
         
@@ -264,6 +269,7 @@ private:
             }
         }
 
+        // Update the counters.
         num_entries_++;
         total_size_ += subtree->size();
     }
@@ -412,20 +418,20 @@ private:
         }
     }
 
-    //
-    // NAME:        linkInsertRight
-    // ACTION:      Insert a node to to the right of this node.
-    // PARAMETERS:  cbnode<T, kOrder> *new_node - the node to insert.
-    //
+//    //
+//    // NAME:        linkInsertRight
+//    // ACTION:      Insert a node to to the right of this node.
+//    // PARAMETERS:  cbnode<T, kOrder> *new_node - the node to insert.
+//    //
 
-    void linkInsertRight(cbnode<T, kOrder> *new_node) {
-        new_node->prev_ = this;
-        new_node->next_ = this->next_;
-        this->next_ = new_node;
+//    void linkInsertRight(cbnode<T, kOrder> *new_node) {
+//        new_node->prev_ = this;
+//        new_node->next_ = this->next_;
+//        this->next_ = new_node;
 
-        if (new_node->next_ != nullptr)
-            new_node->next_->prev_ = new_node;
-    }
+//        if (new_node->next_ != nullptr)
+//            new_node->next_->prev_ = new_node;
+//    }
 
     //
     // NAME:        linkDelete
@@ -812,7 +818,7 @@ template <class T, int kOrder>
 class cbtree_iter
 {
     cbnode<T, kOrder> *node_;
-    unsigned int       entry_;
+    uint_fast16_t      entry_;
     
 public:
     // Default constructor. Same as end().
@@ -823,7 +829,7 @@ public:
     }
     
     // Constructor for an arbitrary node.
-    cbtree_iter(cbnode<T, kOrder> *node, unsigned int entry) :
+    cbtree_iter(cbnode<T, kOrder> *node, uint_fast16_t entry) :
         node_(node),
         entry_(entry)
     {

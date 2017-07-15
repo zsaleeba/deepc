@@ -320,11 +320,14 @@ TEST(CBTree, Iterator)
         cmp[insertAt] = pass;
     }
     
-    cbtree< std::vector<int>, order>::iterator iter;
-    size_t i;
-    for (iter = cb.begin(), i = 0; iter != cb.end(); iter++, i++) {
-//        ASSERT_EQ((*iter)[0], cmp[i]);
+//    std::cout << "iter: ";
+    size_t i = 0;
+    for (auto iter = cb.begin(); iter != cb.end() && i < cmp.size(); iter++, i++) {
+//        std::cout << i << ":" << (**iter)[0] << "/" << cmp[i] << " ";
+        ASSERT_EQ((**iter)[0], cmp[i]);
     }
+
+//    std::cout << std::endl;
 }
 
 
