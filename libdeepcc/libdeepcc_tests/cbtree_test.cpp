@@ -331,5 +331,60 @@ TEST(CBTree, Iterator)
 }
 
 
+TEST(CBTree, LookupRandom)
+{
+    cbtree< std::vector<int>, order> cb;
+    
+    uint32_t randval = 654321;
+    
+    for (int pass = 0; pass < 10000; pass++) {
+        // Insert in the cbtree.
+        size_t insertAt = random() % (pass + 1);
+        std::vector<int> *insertVal = new std::vector<int>{pass};
+        
+        cb.insert(insertAt, insertVal, insertVal->size());
+    }
+    
+    for (int pass = 0; pass < 10000000; pass++) {
+        randval = 1103515245 * randval + 12345;
+        size_t pos = randval % cb.size();
+        std::vector<int> *foundItem = nullptr;
+        size_t foundOffset = 0;
+        ASSERT_TRUE(cb.lookup(pos, &foundItem, &foundOffset));
+    }
+}
+
+
+TEST(CBTree, LookupVector)
+{
+    std::vector<int> cmp;
+    
+    srandom(42);
+    
+    for (int pass = 0; pass < 10000; pass++) {
+        // Insert in the vector.
+        size_t insertAt = random() % (pass + 1);
+        
+        cmp.resize(pass + 1);
+        for (size_t i = pass; i > insertAt; i--)
+        {
+            cmp[i] = cmp[i-1];
+        }
+
+        cmp[insertAt] = pass;
+    }
+    
+    int total = 0;
+    uint32_t randval = 654321;
+    for (int pass = 0; pass < 10000000; pass++) {
+        randval = 1103515245 * randval + 12345;
+        size_t pos = randval % cmp.size();
+        total += cmp.at(pos);
+    }
+    
+    ASSERT_NE(total, 0);
+}
+
+
 }  // namespace deepC.
 
