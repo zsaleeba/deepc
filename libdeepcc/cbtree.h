@@ -450,15 +450,15 @@ private:
     // ACTION:      Delete this node from the list of leaves.
     //
 
-    void linkDelete() {
-        if (this->prev_ != nullptr) {
-            this->prev_->next_ = this->next_;
-        }
+//    void linkDelete() {
+//        if (this->prev_ != nullptr) {
+//            this->prev_->next_ = this->next_;
+//        }
 
-        if (this->next_ != nullptr) {
-            this->next_->prev_ = this->prev_;
-        }
-    }
+//        if (this->next_ != nullptr) {
+//            this->next_->prev_ = this->prev_;
+//        }
+//    }
 
     //
     // NAME:        lookup
@@ -473,8 +473,10 @@ private:
 
     bool lookup(size_t lookup_offset, T **found_item, size_t *found_offset) {
         // Check for an out-of-bounds offset.
-        if (lookup_offset >= total_size_)
+        if (lookup_offset >= total_size_) {
+            *found_offset = 0;
             return false;
+        }
 
         // Search down the tree until we find a leaf.
         cbnode<T, kOrder> *search_subtree = this;
@@ -609,6 +611,11 @@ private:
             cbnode<T, kOrder> *found_subtree = sub_[found_entry].subtree_;
             T *deleted_value = found_subtree->remove(
                 delete_offset - offset_[found_entry], deleted_size);
+            
+            // Adjust the offsets of all the subtrees after this.
+            for (uint_fast32_t i = found_entry + 1; i < num_entries_; i++) {
+                offset_[i] -= *deleted_size;
+            }
 
             if (found_subtree->num_entries_ < ((kOrder + 1) / 2)) {
                 // The entry we just deleted from now has too few items in it.
