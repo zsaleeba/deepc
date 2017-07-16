@@ -70,7 +70,8 @@ void CBTest::checkEqual()
         vecintr_ptr vec;
         size_t offset;
         ASSERT_TRUE(cb.lookup(i, &vec, &offset));
-        ASSERT_EQ(vec->at(i - offset), cmp[i]);
+        EXPECT_EQ(offset, i);
+        ASSERT_EQ((*vec)[0], cmp[i]);
     }
 }
 
@@ -204,35 +205,35 @@ TEST(CBTree, Insert1)
 TEST(CBTree, InsertN)
 {
     cbtree<std::vector<int>, order> cb;
-    vecintr_ptr vecs[5000];
-    for (size_t i = 0; i < 5000; i++)
+    vecintr_ptr vecs[2000];
+    for (size_t i = 0; i < 2000; i++)
     {
-        vecs[i] = makeVec(i * 100, 100);
+        vecs[i] = makeVec(i * 50, 50);
     }
     
-    for (size_t i = 0; i < 5000; i+=2)
+    for (size_t i = 0; i < 2000; i+=2)
     {
         cb.append(vecs[i], vecs[i]->size());
 //        std::cout << "append " << (*vecs[i])[0] << "-" << ((*vecs[i])[0] + vecs[i]->size()) << std::endl;
 //        cb.print();
 //        std::cout << std::endl;
-        ASSERT_EQ(cb.size(), i * 100 / 2 + 100);
+        ASSERT_EQ(cb.size(), i * 50 / 2 + 50);
 
         consistency_check(cb.getRoot());
     }
 
-    for (size_t i = 1; i < 5000; i+=2)
+    for (size_t i = 1; i < 2000; i+=2)
     {
-        cb.insert(i * 100, vecs[i], vecs[i]->size());
+        cb.insert(i * 50, vecs[i], vecs[i]->size());
 //        std::cout << "insert " << (*vecs[i])[0] << "-" << ((*vecs[i])[0] + vecs[i]->size()) << std::endl;
 //        cb.print();
 //        std::cout << std::endl;
-        ASSERT_EQ(cb.size(), 5000 / 2 * 100 + i * 100 / 2 + 50);
+        ASSERT_EQ(cb.size(), 2000 / 2 * 50 + i * 50 / 2 + 25);
 
         consistency_check(cb.getRoot());
     }
 
-    EXPECT_EQ(cb.size(), 5000 * 100);
+    EXPECT_EQ(cb.size(), 2000 * 50);
     
 //    cb.print();
     
@@ -246,7 +247,7 @@ TEST(CBTree, InsertN)
     
     consistency_check(cb.getRoot());
 
-    for (size_t i = 0; i < 5000; i++)
+    for (size_t i = 0; i < 2000; i++)
     {
         delete vecs[i];
     }
@@ -283,7 +284,7 @@ TEST(CBTree, InsertSpeed)
     size_t totalSize = 0;
     std::vector<int> *insertVal = new std::vector<int>{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
     
-    for (int pass = 0; pass < 1000000; pass++) {
+    for (int pass = 0; pass < 100000; pass++) {
         // Insert in the cbtree.
         randval = 1103515245 * randval + 12345;
         uint32_t numInserted = randval & 0xf;
@@ -320,7 +321,7 @@ TEST_F(CBTest, Iterator)
 TEST_F(CBTest, LookupRandom)
 {
     uint32_t randval = 654321;
-    for (int pass = 0; pass < 10000000; pass++) {
+    for (int pass = 0; pass < 1000000; pass++) {
         randval = 1103515245 * randval + 12345;
         size_t pos = randval % cb.size();
         std::vector<int> *foundItem = nullptr;
@@ -334,7 +335,7 @@ TEST_F(CBTest, LookupVector)
 {
     int total = 0;
     uint32_t randval = 654321;
-    for (int pass = 0; pass < 10000000; pass++) {
+    for (int pass = 0; pass < 1000000; pass++) {
         randval = 1103515245 * randval + 12345;
         size_t pos = randval % cmp.size();
         total += cmp.at(pos);
