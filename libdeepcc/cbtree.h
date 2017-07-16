@@ -99,7 +99,7 @@ private:
     // RETURNS:     size_t - the entry size.
     //
 
-    size_t getEntrySize(int entry) const {
+    size_t getEntrySize(uint32_t entry) const {
         if (entry == num_entries_ - 1) {
             return total_size_ - offset_[entry];
         } else {
@@ -150,7 +150,7 @@ private:
         std::move(&from_node->sub_[0], &from_node->sub_[from_node->num_entries_], &sub_[num_entries_]);
 
         // Move the offsets across and adjust.
-        for (int count = 0; count < from_node->num_entries_; count++) {
+        for (uint_fast32_t count = 0; count < from_node->num_entries_; count++) {
             offset_[num_entries_ + count] = from_node->offset_[count] + total_size_;
         }
 
@@ -195,7 +195,7 @@ private:
         std::fill_n(&sub_[split_entry].subtree_, kOrder - split_entry, nullptr);
 
         // Copy offsets across and adjust.
-        for (unsigned int count = 0; count < right_node->num_entries_; count++) {
+        for (uint_fast32_t count = 0; count < right_node->num_entries_; count++) {
             right_node->offset_[count] = offset_[count + split_entry] - total_size_;
         }
 
@@ -236,7 +236,7 @@ private:
             sub_[new_entry].value_ = new_value;
 
             // Copy all the offsets to the right and adjust them.
-            for (unsigned int count = num_entries_; count > new_entry; count--) {
+            for (uint_fast32_t count = num_entries_; count > new_entry; count--) {
                 offset_[count] = offset_[count-1] + new_value_size;
             }
         }
@@ -264,7 +264,7 @@ private:
             sub_[new_entry].subtree_ = subtree;
 
             // Copy all the offsets to the right and adjust them.
-            for (unsigned int count = num_entries_; count > new_entry; count--) {
+            for (uint_fast32_t count = num_entries_; count > new_entry; count--) {
                 offset_[count] = offset_[count-1] + subtree->size();
             }
         }
@@ -291,11 +291,14 @@ private:
         std::memmove(&sub_[entry],
                      &sub_[entry + 1],
                      sizeof(sub_[entry]) * (num_entries_ - entry - 1));
+        sub_[num_entries_ - 1].subtree_ = nullptr;
 
         // Move the offsets across and adjust them.
-        for (int count = entry; count < num_entries_ - 1; count++) {
+        for (uint_fast32_t count = entry; count < num_entries_ - 1; count++) {
             offset_[count] = offset_[count + 1] - *deleted_size;
         }
+        
+        offset_[num_entries_ - 1] = 0;
 
         total_size_ -= *deleted_size;
         num_entries_--;
@@ -321,10 +324,13 @@ private:
             if (left_subtree->num_entries_ > ((kOrder + 1) / 2)) {
                 // Yes, steal from the left
                 size_t    stolen_size;
-                child_ptr steal_value = left_subtree->deleteEntry(
-                    left_subtree->num_entries_ - 1, stolen_size);
-                underweight_subtree->insertEntry(0, steal_value,
-                                                 stolen_size);
+                child_ptr steal_value = left_subtree->deleteEntry(left_subtree->num_entries_ - 1, &stolen_size);
+                if (underweight_subtree->is_leaf_) {
+                    underweight_subtree->insertValue(0, steal_value.value_, stolen_size);
+                }
+                else {
+                    underweight_subtree->insertSubtree(0, steal_value.subtree_);
+                }
                 offset_[underweight_entry] += stolen_size;
             } else {
                 // No, but we can add the contents of this node to the node
@@ -333,7 +339,8 @@ private:
 
                 // Remove the underweight node.
                 delete underweight_subtree;
-                deleteEntry(underweight_entry);
+                size_t deleted_size;
+                deleteEntry(underweight_entry, &deleted_size);  // XXX - do we need to delete this node?
             }
         } else if (underweight_entry + 1 < num_entries_) {
             // Can we steal an item from the right instead?
@@ -342,10 +349,14 @@ private:
             if (right_subtree->num_entries_ > ((kOrder + 1) / 2)) {
                 // Yes, steal from the right.
                 size_t    stolen_size;
-                child_ptr steal_value =
-                    right_subtree->deleteEntry(0, stolen_size);
-                underweight_subtree->insertEntry(num_entries_, steal_value,
-                                                 stolen_size);
+                child_ptr steal_value = right_subtree->deleteEntry(0, &stolen_size);
+                if (underweight_subtree->is_leaf_) {
+                    underweight_subtree->insertValue(num_entries_, steal_value.value_, stolen_size);
+                }
+                else {
+                    underweight_subtree->insertSubtree(num_entries_, steal_value.subtree_);
+                }
+                
                 offset_[underweight_entry] += stolen_size;
             } else {
                 // No, but we can add the contents of this node to the node
@@ -354,7 +365,8 @@ private:
 
                 // Remove the underweight node.
                 delete underweight_subtree;
-                deleteEntry(underweight_entry);
+                size_t deleted_size;
+                deleteEntry(underweight_entry, &deleted_size);  // XXX - do we need to delete this entry?
             }
         }
     }
@@ -367,13 +379,13 @@ private:
         std::fill_n(&offset_[0], kOrder, 0);
         if (!p_is_leaf)
         {
-            for (size_t i = 0; i < kOrder; i++) {
+            for (unsigned int i = 0; i < kOrder; i++) {
                 sub_[i].value_ = nullptr;
             }
         }
         else
         {
-            for (size_t i = 0; i < kOrder; i++) {
+            for (unsigned int i = 0; i < kOrder; i++) {
                 sub_[i].subtree_ = nullptr;
             }
         }
@@ -404,7 +416,7 @@ private:
         offset_[0] = 0;
         offset_[1] = left->total_size_;
         
-        for (size_t i = 2; i < kOrder; i++) {
+        for (unsigned int i = 2; i < kOrder; i++) {
             sub_[i].subtree_ = nullptr;
             offset_[i] = 0;
         }
@@ -413,7 +425,7 @@ private:
     ~cbnode() {
         // Delete all the subtrees.
         if (!is_leaf_) {
-            for (unsigned int count = 0; count < num_entries_; count++)
+            for (uint_fast32_t count = 0; count < num_entries_; count++)
                 delete sub_[count].subtree_;
         }
     }
@@ -543,7 +555,7 @@ private:
                     new_value_size, &adjust_our_size);
             
             // Adjust sizes and offsets.
-            for (unsigned int count = found_entry + 1; count < num_entries_; count++) {
+            for (uint_fast32_t count = found_entry + 1; count < num_entries_; count++) {
                 offset_[count] += adjust_our_size;
             }
 
@@ -591,12 +603,12 @@ private:
         int found_entry = searchNode(delete_offset);
         if (is_leaf_) {
             // Delete from a leaf.
-            return deleteEntry(found_entry, deleted_size);
+            return deleteEntry(found_entry, deleted_size).value_;
         } else {
             // Recursively delete from a branch.
             cbnode<T, kOrder> *found_subtree = sub_[found_entry].subtree_;
             T *deleted_value = found_subtree->remove(
-                delete_offset - offset_[found_entry], *deleted_size);
+                delete_offset - offset_[found_entry], deleted_size);
 
             if (found_subtree->num_entries_ < ((kOrder + 1) / 2)) {
                 // The entry we just deleted from now has too few items in it.
@@ -627,7 +639,7 @@ private:
         std::cout << "{ [" << offset << "-" << (offset + total_size_) << "], size=" << total_size_ << std::endl;
         
         if (is_leaf_) {
-            for (int i = 0; i < num_entries_; i++)
+            for (uint_fast32_t i = 0; i < num_entries_; i++)
             {
                 for (int indent = 0; indent < depth+1; indent++) {
                     std::cout << "    ";
@@ -637,7 +649,7 @@ private:
             }
         }
         else {
-            for (int i = 0; i < num_entries_; i++)
+            for (uint_fast32_t i = 0; i < num_entries_; i++)
             {
                 sub_[i].subtree_->print(offset + offset_[i], depth+1);
             }
@@ -740,16 +752,7 @@ class cbtree {
 
     T *remove(size_t remove_offset) {
         size_t deleted_size;
-        T *    deleted_value = root_->remove(remove_offset, deleted_size);
-
-        if (root_->get_num_entries() == 1) {
-            // The root node is allowed to be underweight but it's possible
-            // it may have only one entry, in which case we'll eliminate it
-            // and make the tree one level less deep.
-            root_ = root_->eliminate_root();
-        }
-
-        return deleted_value;
+        return root_->remove(remove_offset, &deleted_size);
     }
 
     //
