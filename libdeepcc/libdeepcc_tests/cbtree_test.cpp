@@ -3,12 +3,76 @@
 #include <assert.h>
 #include <gtest/gtest.h>
 
+
 #include "cbtree.h"
 
 namespace deepC
 {
 
 constexpr unsigned int order = 30;
+typedef std::vector<int> *vecintr_ptr;
+
+
+class CBTest : public ::testing::Test
+{
+public:
+
+    cbtree< std::vector<int>, order> cb;
+    std::vector<int> cmp;
+
+public:
+    CBTest() {}
+    void SetUp();
+    void TearDown();
+    
+    void checkEqual();
+};
+
+void CBTest::SetUp()
+{
+    srandom(42);
+    
+    for (int pass = 0; pass < 10000; pass++) {
+        // Insert in the cbtree.
+        size_t insertAt = random() % (pass + 1);
+        std::vector<int> *insertVal = new std::vector<int>{pass};
+//        std::cout << "insert " << pass << " at " << insertAt << " size=" << insertVal->size() << std::endl;
+        
+        cb.insert(insertAt, insertVal, insertVal->size());
+        
+//        cb.print();
+//        std::cout << std::endl;
+
+        // Do the same to the vector.
+        cmp.resize(pass + 1);
+        for (size_t i = pass; i > insertAt; i--)
+        {
+            cmp[i] = cmp[i-1];
+        }
+
+        cmp[insertAt] = pass;
+    }
+}
+
+void CBTest::TearDown()
+{
+    for (auto iter = cb.begin(); iter != cb.end(); iter++) {
+        delete *iter;
+    }
+}
+
+void CBTest::checkEqual()
+{
+    ASSERT_EQ(cb.size(), cmp.size());
+
+    for (size_t i = 0; i < cb.size(); i++)
+    {
+        vecintr_ptr vec;
+        size_t offset;
+        ASSERT_TRUE(cb.lookup(i, &vec, &offset));
+        ASSERT_EQ(vec->at(i - offset), cmp[i]);
+    }
+}
 
 
 std::vector<int> *makeVec(int start, int len)
@@ -140,7 +204,6 @@ TEST(CBTree, Insert1)
 TEST(CBTree, InsertN)
 {
     cbtree<std::vector<int>, order> cb;
-    typedef std::vector<int> *vecintr_ptr;
     vecintr_ptr vecs[5000];
     for (size_t i = 0; i < 5000; i++)
     {
@@ -190,60 +253,9 @@ TEST(CBTree, InsertN)
 }
 
 
-TEST(CBTree, InsertRandom)
+TEST_F(CBTest, InsertRandom)
 {
-    cbtree< std::vector<int>, order> cb;
-    std::vector<int> cmp;
-    
-    srandom(42);
-    
-    for (int pass = 0; pass < 10000; pass++) {
-        // Insert in the cbtree.
-        size_t insertAt = random() % (pass + 1);
-        std::vector<int> *insertVal = new std::vector<int>{pass};
-//        std::cout << "insert " << pass << " at " << insertAt << " size=" << insertVal->size() << std::endl;
         
-        cb.insert(insertAt, insertVal, insertVal->size());
-        
-//        cb.print();
-//        std::cout << std::endl;
-
-        // Do the same to the vector.
-        cmp.resize(pass + 1);
-        for (size_t i = pass; i > insertAt; i--)
-        {
-            cmp[i] = cmp[i-1];
-        }
-
-        cmp[insertAt] = pass;
-    }
-    
-//    cb.print();
-    
-//    std::cout << "vector: ";
-//    for (size_t i = 0; i < cmp.size(); i++)
-//    {
-//        std::cout << i << ":" << cmp[i];
-//        if (i == cmp.size()-1)
-//            std::cout << std::endl;
-//        else
-//            std::cout << " ";
-//    }
-
-//    std::cout << "cbtree: ";
-//    for (size_t i = 0; i < cmp.size(); i++)
-//    {
-//        std::vector<int> *foundItem = nullptr;
-//        size_t foundOffset = 0;
-//        ASSERT_TRUE(cb.lookup(i, &foundItem, &foundOffset));
-
-//        std::cout << foundOffset << ":" << (*foundItem)[0];
-//        if (i == cmp.size()-1)
-//            std::cout << std::endl;
-//        else
-//            std::cout << " ";
-//    }
-    
     std::vector<int> *foundItem = nullptr;
     size_t foundOffset = 0;
     cb.lookup(7, &foundItem, &foundOffset);    
@@ -292,34 +304,8 @@ TEST(CBTree, InsertSpeed)
 }
 
 
-TEST(CBTree, Iterator)
+TEST_F(CBTest, Iterator)
 {
-    cbtree< std::vector<int>, order> cb;
-    std::vector<int> cmp;
-    
-    srandom(42);
-    
-    for (int pass = 0; pass < 10000; pass++) {
-        // Insert in the cbtree.
-        size_t insertAt = random() % (pass + 1);
-        std::vector<int> *insertVal = new std::vector<int>{pass};
-//        std::cout << "insert " << pass << " at " << insertAt << " size=" << insertVal->size() << std::endl;
-        
-        cb.insert(insertAt, insertVal, insertVal->size());
-        
-//        cb.print();
-//        std::cout << std::endl;
-
-        // Do the same to the vector.
-        cmp.resize(pass + 1);
-        for (size_t i = pass; i > insertAt; i--)
-        {
-            cmp[i] = cmp[i-1];
-        }
-
-        cmp[insertAt] = pass;
-    }
-    
 //    std::cout << "iter: ";
     size_t i = 0;
     for (auto iter = cb.begin(); iter != cb.end() && i < cmp.size(); iter++, i++) {
@@ -331,20 +317,9 @@ TEST(CBTree, Iterator)
 }
 
 
-TEST(CBTree, LookupRandom)
+TEST_F(CBTest, LookupRandom)
 {
-    cbtree< std::vector<int>, order> cb;
-    
     uint32_t randval = 654321;
-    
-    for (int pass = 0; pass < 10000; pass++) {
-        // Insert in the cbtree.
-        size_t insertAt = random() % (pass + 1);
-        std::vector<int> *insertVal = new std::vector<int>{pass};
-        
-        cb.insert(insertAt, insertVal, insertVal->size());
-    }
-    
     for (int pass = 0; pass < 10000000; pass++) {
         randval = 1103515245 * randval + 12345;
         size_t pos = randval % cb.size();
@@ -355,25 +330,8 @@ TEST(CBTree, LookupRandom)
 }
 
 
-TEST(CBTree, LookupVector)
+TEST_F(CBTest, LookupVector)
 {
-    std::vector<int> cmp;
-    
-    srandom(42);
-    
-    for (int pass = 0; pass < 10000; pass++) {
-        // Insert in the vector.
-        size_t insertAt = random() % (pass + 1);
-        
-        cmp.resize(pass + 1);
-        for (size_t i = pass; i > insertAt; i--)
-        {
-            cmp[i] = cmp[i-1];
-        }
-
-        cmp[insertAt] = pass;
-    }
-    
     int total = 0;
     uint32_t randval = 654321;
     for (int pass = 0; pass < 10000000; pass++) {
@@ -385,6 +343,33 @@ TEST(CBTree, LookupVector)
     ASSERT_NE(total, 0);
 }
 
+
+TEST_F(CBTest, RemoveFirst)
+{
+    cb.remove(0);
+    cmp.erase(cmp.begin());
+    
+    checkEqual();
+}
+
+
+TEST_F(CBTest, RemoveMiddle)
+{
+    size_t middle = cb.size() / 2;
+    cb.remove(middle);
+    cmp.erase(cmp.begin() + middle);
+    
+    checkEqual();
+}
+
+
+TEST_F(CBTest, RemoveLast)
+{
+    cb.remove(cb.size()-1);
+    cmp.pop_back();
+    
+    checkEqual();
+}
 
 }  // namespace deepC.
 
