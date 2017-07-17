@@ -9,7 +9,7 @@
 namespace deepC
 {
 
-constexpr unsigned int order = 30;
+constexpr unsigned int order = 4;
 typedef std::vector<int> *vecintr_ptr;
 
 
@@ -32,7 +32,7 @@ void CBTest::SetUp()
 {
     srandom(42);
     
-    for (int pass = 0; pass < 10000; pass++) {
+    for (int pass = 0; pass < 10; pass++) {
         // Insert in the cbtree.
         size_t insertAt = random() % (pass + 1);
         std::vector<int> *insertVal = new std::vector<int>{pass};
@@ -347,8 +347,12 @@ TEST_F(CBTest, LookupVector)
 
 TEST_F(CBTest, RemoveFirst)
 {
+    cb.print();
     cb.remove(0);
     cmp.erase(cmp.begin());
+
+    std::cout << "\nresult:\n";
+    cb.print();
     
     checkEqual();
 }
@@ -371,6 +375,41 @@ TEST_F(CBTest, RemoveLast)
     
     checkEqual();
 }
+
+#if 0
+TEST_F(CBTest, RemoveFirstO)
+{
+    for (unsigned int i = 0; i < order; i++) {
+        cb.remove(0);
+        cmp.erase(cmp.begin());
+    }
+    
+    checkEqual();
+}
+
+
+TEST_F(CBTest, RemoveMiddleO)
+{
+    size_t middle = cb.size() / 2;
+    for (unsigned int i = 0; i < order; i++) {
+        cb.remove(middle);
+        cmp.erase(cmp.begin() + middle);
+    }
+    
+    checkEqual();
+}
+
+
+TEST_F(CBTest, RemoveLastO)
+{
+    for (unsigned int i = 0; i < order; i++) {
+        cb.remove(cb.size()-1);
+        cmp.pop_back();
+    }
+    
+    checkEqual();
+}
+#endif
 
 }  // namespace deepC.
 

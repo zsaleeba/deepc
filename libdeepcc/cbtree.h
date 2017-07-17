@@ -621,6 +621,7 @@ private:
                 // The entry we just deleted from now has too few items in it.
                 // Try to redistribute items to keep it at least half full.
                 rebalance(found_entry);
+                //XXX - fix problem with offsets after rebalancing.
             }
 
             // Fix the total size.
