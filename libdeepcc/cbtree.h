@@ -322,7 +322,7 @@ private:
             cbnode<T, kOrder> *left_subtree = sub_[underweight_entry - 1].subtree_;
 
             if (left_subtree->num_entries_ > ((kOrder + 1) / 2)) {
-                // Yes, steal from the left
+                // Yes, steal from the left.
                 size_t    stolen_size;
                 child_ptr steal_value = left_subtree->deleteEntry(left_subtree->num_entries_ - 1, &stolen_size);
                 if (underweight_subtree->is_leaf_) {
@@ -331,16 +331,17 @@ private:
                 else {
                     underweight_subtree->insertSubtree(0, steal_value.subtree_);
                 }
-                offset_[underweight_entry] += stolen_size;
+
+                offset_[underweight_entry] -= stolen_size;
             } else {
                 // No, but we can add the contents of this node to the node
                 // on the left.
                 left_subtree->appendContents(underweight_subtree);
 
-                // Remove the underweight node.
+                // Remove the (empty) underweight node.
                 delete underweight_subtree;
                 size_t deleted_size;
-                deleteEntry(underweight_entry, &deleted_size);  // XXX - do we need to delete this node?
+                deleteEntry(underweight_entry, &deleted_size);
             }
         } else if (underweight_entry + 1 < num_entries_) {
             // Can we steal an item from the right instead?
@@ -363,10 +364,10 @@ private:
                 // on the right.
                 right_subtree->appendContents(underweight_subtree);
 
-                // Remove the underweight node.
+                // Remove the (empty) underweight node.
                 delete underweight_subtree;
                 size_t deleted_size;
-                deleteEntry(underweight_entry, &deleted_size);  // XXX - do we need to delete this entry?
+                deleteEntry(underweight_entry, &deleted_size);
             }
         }
     }
