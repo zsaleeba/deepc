@@ -372,18 +372,18 @@ TEST_F(CBTest, RemoveLast)
     checkEqual();
 }
 
-#if 0
 TEST_F(CBTest, RemoveFirstO)
 {
     for (unsigned int i = 0; i < order; i++) {
         cb.remove(0);
         cmp.erase(cmp.begin());
     }
-    
+
     checkEqual();
 }
 
 
+#if 0
 TEST_F(CBTest, RemoveMiddleO)
 {
     size_t middle = cb.size() / 2;
@@ -398,12 +398,16 @@ TEST_F(CBTest, RemoveMiddleO)
 
 TEST_F(CBTest, RemoveLastO)
 {
+    cb.print();
+    
     for (unsigned int i = 0; i < order; i++) {
         cb.remove(cb.size()-1);
         cmp.pop_back();
+        std::cout << std::endl << i << std::endl;
+        cb.print();
+        
+        checkEqual();
     }
-    
-    checkEqual();
 }
 #endif
 

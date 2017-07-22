@@ -162,6 +162,32 @@ private:
     }
 
     //
+    // NAME:        prependContents
+    // ACTION:      Moves the contents of a given node across to the start of
+    //              this node, prepending to the current contents.
+    //              Assumes that both will fit in the one node.
+    // PARAMETERS:  cbnode<T, kOrder> *from_node - the node to move data from.
+    //
+
+    void prependContents(cbnode<T, kOrder> *from_node) {
+        // Make space for the new nodes.
+        for (int_fast32_t i = num_entries_ - 1; i >= 0; i--) {
+            sub_[from_node->num_entries_ + i] = sub_[i];
+            offset_[from_node->num_entries_ + i] = offset_[i] + from_node->total_size_;
+        }
+        
+        // Move the new values and offsets across.
+        std::move(&from_node->sub_[0], &from_node->sub_[from_node->num_entries_], &sub_[0]);
+        std::move(&from_node->offset_[0], &from_node->offset_[from_node->num_entries_], &offset_[0]);
+
+        // Fix sizes.
+        total_size_ += from_node->total_size_;
+        num_entries_ += from_node->num_entries_;
+        from_node->total_size_ = 0;
+        from_node->num_entries_ = 0;
+    }
+
+    //
     // NAME:        splitNode
     // ACTION:      Splits a node in half to make space for insertion.
     // PARAMETERS:  bool insert_left - true to leave more space on the
@@ -336,6 +362,7 @@ private:
             } else {
                 // No, but we can add the contents of this node to the node
                 // on the left.
+                offset_[underweight_entry] += underweight_subtree->total_size_;
                 left_subtree->appendContents(underweight_subtree);
 
                 // Remove the (empty) underweight node.
@@ -362,7 +389,8 @@ private:
             } else {
                 // No, but we can add the contents of this node to the node
                 // on the right.
-                right_subtree->appendContents(underweight_subtree);
+                right_subtree->prependContents(underweight_subtree);
+                offset_[underweight_entry + 1] = offset_[underweight_entry];
 
                 // Remove the (empty) underweight node.
                 delete underweight_subtree;
@@ -617,6 +645,9 @@ private:
             for (uint_fast32_t i = found_entry + 1; i < num_entries_; i++) {
                 offset_[i] -= *deleted_size;
             }
+            
+            // Fix the total size.
+            total_size_ -= *deleted_size;
 
             if (found_subtree->num_entries_ < ((kOrder + 1) / 2)) {
                 // The entry we just deleted from now has too few items in it.
@@ -624,9 +655,6 @@ private:
                 rebalance(found_entry);
                 //XXX - fix problem with offsets after rebalancing.
             }
-
-            // Fix the total size.
-            total_size_ -= *deleted_size;
 
             return deleted_value;
         }
