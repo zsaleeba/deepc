@@ -358,7 +358,7 @@ private:
                     underweight_subtree->insertSubtree(num_entries_, steal_value.subtree_);
                 }
                 
-                offset_[underweight_entry] += stolen_size;
+                offset_[underweight_entry + 1] += stolen_size;
             } else {
                 // No, but we can add the contents of this node to the node
                 // on the right.

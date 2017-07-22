@@ -347,12 +347,8 @@ TEST_F(CBTest, LookupVector)
 
 TEST_F(CBTest, RemoveFirst)
 {
-    cb.print();
     cb.remove(0);
     cmp.erase(cmp.begin());
-
-    std::cout << "\nresult:\n";
-    cb.print();
     
     checkEqual();
 }
