@@ -14,6 +14,7 @@
 #include <sys/mman.h>
 
 #include "programdb.h"
+#include "sourcefile.h"
 #include "sourcefile_generated.h"
 
 
@@ -109,46 +110,33 @@ bool ProgramDb::getSourceFileByFileId(unsigned int fileId, std::shared_ptr<Sourc
     k.mv_size = sizeof(unsigned int);
     k.mv_data = reinterpret_cast<void *>(&fileId);
     rc = mdb_get(txn, sourceFilesDbi_, &k, &v);
-    if (!rc)
+    if (rc)
     {
-        const SourceFile *sf = GetSourceFile(v.mv_data);
-        
-        if (filename)
-        {
-            *filename = sf->filename()->str();
-        }
-        
-        if (source)
-        {
-            *source = sf->source()->str();
-        }
-        
-        if (modified)
-        {
-            *modified = *sf->modified();
-        }
-        
         mdb_txn_abort(txn);
-        return true;
+        
+        if (rc == MDB_NOTFOUND)
+        {
+            // Not found.
+            return false;
+        }
+        else
+        {
+            // Failed.
+            throw ProgramDbException(std::string("can't get source file by file id ") + std::to_string(fileId) + ": " + mdb_strerror(rc));
+        }
     }
-
-    // Errors fall through to here.
-    *filename = std::string();
-    *modified = "";
-    mdb_txn_abort(txn);
     
-    if (rc == MDB_NOTFOUND)
-    {
-        false;
-    }
-    else
-    {
-        throw ProgramDbException(std::string("can't get source file by file id ") + std::to_string(fileId) + ": " + mdb_strerror(rc));
-    }
+    // Convert the binary form into a SourceFile.
+    const fb::SourceFile *sf = fb::GetSourceFile(v.mv_data);
+    struct timespec modified = {static_cast<time_t>(sf->modified()->seconds()), sf->modified()->nanoseconds()};
+    *source = std::make_shared<SourceFile>(sf->filename()->str(), sf->source()->str(), modified);
+    
+    mdb_txn_abort(txn);
+    return true;
 }
 
 
-ProgramDb::GetResultCode ProgramDb::getSourceFileIdByFilename(const std::string &filename, unsigned int *fileId)
+bool ProgramDb::getSourceFileIdByFilename(const std::string &filename, unsigned int *fileId)
 {
     // Open the transaction.
     MDB_txn *txn;
@@ -184,40 +172,14 @@ ProgramDb::GetResultCode ProgramDb::getSourceFileIdByFilename(const std::string 
 }
 
 
-bool ProgramDb::addSourceFile(const std::string &filename, const std::string &source, unsigned int *fileId)
+bool ProgramDb::addSourceFile(std::shared_ptr<SourceFile> source, unsigned int *fileId)
 {
-#if 0
-    // Get the file modification time.
-    int fd = open(filename.c_str(), O_RDONLY);
-    if (fd < 0)
-    {
-        errorMessage_ = std::string("can't add source file, open(") + filename + "): " + strerror(errno);
-        return false;    
-    }
-    
-    struct stat fileInfo;
-    if (fstat(fd, &fileInfo))
-    {
-        errorMessage_ = std::string("can't add source file, fstat(") + filename + "): " + strerror(errno);
-        close(fd);
-        return false;    
-    }
-    
-    // Get the new source text.
-    void *mapFile = mmap(NULL, fileInfo.st_size, PROT_READ, MAP_PRIVATE | MAP_POPULATE, fd, 0);
-    if (mapFile == MAP_FAILED)
-    {
-        errorMessage_ = std::string("can't add source file, mmap(") + filename + "): " + strerror(errno);
-        close(fd);
-        return false;    
-    }
-#endif
-    
     // Encode the SourceFile data.
-    flatbuffers::FlatBufferBuilder builder(filename.length() + source.length() + 1024);
-    auto filenameStr = builder.CreateString(filename);
-    auto sourceStr = builder.CreateString(source);
-    CreateSourceFile(builder, filenameStr, sourceStr, &modified);
+    flatbuffers::FlatBufferBuilder builder(source->fileName().length() + source->sourceText().length() + 1024);
+    auto filenameStr = builder.CreateString(source->fileName());
+    auto sourceStr = builder.CreateString(source->sourceText());
+    fb::SourceModified modified(source->modified().tv_sec, source->modified().tv_nsec);
+    fb::CreateSourceFile(builder, filenameStr, sourceStr, &modified);
 
 #if 0    
     // Close the file.
@@ -246,14 +208,14 @@ bool ProgramDb::addSourceFile(const std::string &filename, const std::string &so
     // See if it already exists.
     MDB_val fileKey;
     MDB_val fileVal;
-    fileKey.mv_size = filename.length();
-    fileKey.mv_data = reinterpret_cast<void *>(const_cast<char *>(filename.data()));
+    fileKey.mv_size = source->fileName().length();
+    fileKey.mv_data = reinterpret_cast<void *>(const_cast<char *>(source->fileName().data()));
     rc = mdb_get(txn, sourceFilesIdsByFilenameDbi_, &fileKey, &fileVal);
     if (rc != 0 && rc != MDB_NOTFOUND)
     {
         // Error getting it.
         mdb_txn_abort(txn);
-        throw ProgramDbException(std::string("can't add source file, mdb_get(") + filename + "): " + mdb_strerror(rc));
+        throw ProgramDbException(std::string("can't add source file, mdb_get(") + source->fileName() + "): " + mdb_strerror(rc));
     }
     else if (rc == 0)
     {
@@ -268,7 +230,7 @@ bool ProgramDb::addSourceFile(const std::string &filename, const std::string &so
         if (rc)
         {
             mdb_txn_abort(txn);
-            throw ProgramDbException(std::string("can't add source file, mdb_cursor_open(") + filename + "): " + mdb_strerror(rc));
+            throw ProgramDbException(std::string("can't add source file, mdb_cursor_open(") + source->fileName() + "): " + mdb_strerror(rc));
         }
         
         // Get the last entry in the SourceFiles db.
@@ -278,7 +240,7 @@ bool ProgramDb::addSourceFile(const std::string &filename, const std::string &so
         if (rc)
         {
             mdb_txn_abort(txn);
-            throw ProgramDbException(std::string("can't add source file, mdb_cursor_get(") + filename + "): " + mdb_strerror(rc));
+            throw ProgramDbException(std::string("can't add source file, mdb_cursor_get(") + source->fileName() + "): " + mdb_strerror(rc));
         }
         
         // Increment the file id.
@@ -306,14 +268,14 @@ bool ProgramDb::addSourceFile(const std::string &filename, const std::string &so
     if (rc)
     {
         mdb_txn_abort(txn);
-        throw ProgramDbException(std::string("can't add source file, mdb_put(") + std::to_string(*fileId) + "," + filename + "): " + mdb_strerror(rc));
+        throw ProgramDbException(std::string("can't add source file, mdb_put(") + std::to_string(*fileId) + "," + source->fileName() + "): " + mdb_strerror(rc));
     }
     
     rc = mdb_txn_commit(txn);
     if (rc)
     {
         mdb_txn_abort(txn);
-        throw ProgramDbException(std::string("can't add source file, mdb_txn_commit(") + filename + "): " + mdb_strerror(rc));
+        throw ProgramDbException(std::string("can't add source file, mdb_txn_commit(") + source->fileName() + "): " + mdb_strerror(rc));
     }
     
     return true;

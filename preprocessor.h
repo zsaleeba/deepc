@@ -27,9 +27,9 @@ namespace deepC
 class Preprocessor
 {
     // Inputs for this preprocessing operation.
-    std::string                sourceFileName_;
-    const CompileArgs         &args_;
     std::shared_ptr<ProgramDb> pdb_;
+    const CompileArgs         &args_;
+    std::string                sourceFileName_;
 
     // Results of preprocessing.
     std::string                preProcText_;    // The preprocessed source text.

@@ -1,9 +1,9 @@
-#ifndef DEEPC_PARSER_H
-#define DEEPC_PARSER_H
+#ifndef DEEPC_CPARSER_H
+#define DEEPC_CPARSER_H
 
 
-#include <memory>
 #include <string>
+#include <memory>
 
 
 namespace deepC
@@ -17,15 +17,16 @@ class CompileArgs;
 
 class CParser
 {
-    std::shared_ptr<ProgramDb> pdb_;
-    const CompileArgs         &args_;
-    std::string                sourceFileName_;
-
+private:
+    std::shared_ptr<ProgramDb>  pdb_;
+    const CompileArgs          &args_;
+    const std::string          &sourceFileName_;
+    
 public:
     CParser(std::shared_ptr<ProgramDb> pdb, const CompileArgs &args, const std::string &sourceFileName);
 };
 
 
-} namespace deepC
+}
 
-#endif // DEEPC_PARSER_H
+#endif // DEEPC_CPARSER_H
