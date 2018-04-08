@@ -1,8 +1,13 @@
 #include <iostream>
 #include <getopt.h>
+#include <cctype>
 
 #include "compileargs.h"
 #include "compiler.h"
+#include "fail.h"
+
+
+using namespace deepC;
 
 
 //
@@ -11,7 +16,8 @@
 
 int main(int argc, char *argv[])
 {
-    static struct option long_options[] =
+    // The available command line parameters.
+    static struct option longOpts[] =
     {
         {"optimize",      required_argument, nullptr,  'O' },
         {"compile-only",  no_argument,       nullptr,  'c' },
@@ -25,8 +31,12 @@ int main(int argc, char *argv[])
 
     int  longInd = 0;
     CompileArgs args;
-    int flag;
+    std::vector<std::string> includePath;
+    std::vector<std::string> defines;
+    std::vector<std::string> warnings;
 
+    // Read the command line parameters.
+    int flag = 0;
     do
     {
         flag = getopt_long(argc, argv, "O:co:gI:W:", longOpts, &longInd);
@@ -35,19 +45,24 @@ int main(int argc, char *argv[])
             switch (flag)
             {
             case 'O':
-                args.optimisationLevel_ = checkedAtoi(optarg);
+                if (!std::isdigit(optarg[0]))
+                {
+                    failf("invalid optimisation level");
+                }
+
+                args.setOptimisationLevel(std::atoi(optarg));
                 break;
 
             case 'c':
-                performLink = false;
+                args.setPerformLink(false);
                 break;
 
             case 'o':
-                outputFile = optarg;
+                args.setOutputFileName(optarg);
                 break;
 
             case 'g':
-                outputDebugSymbols = true;
+                args.setOutputDebugSymbols(true);
                 break;
 
             case 'I':
@@ -65,6 +80,11 @@ int main(int argc, char *argv[])
         }
     } while (flag >= 0);
 
+    // Set the accumulated list parameters.
+    args.setIncludePath(includePath);
+    args.setDefines(defines);
+    args.setWarnings(warnings);
+
     // Get file args.
     if (optind == argc)
     {
@@ -72,10 +92,10 @@ int main(int argc, char *argv[])
     }
 
     // Compile each of the file arguments.
-    Compiler comp;
+    Compiler comp(args);
     while (optind < argc)
     {
-        comp.compile(args, argv[optind]);
+        comp.compile(argv[optind]);
         optind++;
     }
 

@@ -1,5 +1,12 @@
-#ifndef COMPILEARGS_H
-#define COMPILEARGS_H
+#ifndef DEEPC_COMPILEARGS_H
+#define DEEPC_COMPILEARGS_H
+
+#include <string>
+#include <vector>
+
+
+namespace deepC
+{
 
 
 //
@@ -44,4 +51,6 @@ public:
 };
 
 
-#endif // COMPILEARGS_H
+} // namespace deepC
+
+#endif // DEEPC_COMPILEARGS_H

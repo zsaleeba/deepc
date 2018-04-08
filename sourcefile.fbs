@@ -1,0 +1,14 @@
+namespace deepC;
+
+struct SourceModified {
+    seconds     : ulong;
+    nanoseconds : uint;
+}
+
+table SourceFile {
+    filename : string;
+    source   : string;
+    modified : SourceModified;
+}
+
+root_type SourceFile;

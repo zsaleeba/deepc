@@ -9,13 +9,23 @@
  ***                                                                    ***
  **************************************************************************/
 
-#ifndef PROGRAMDB_H
-#define PROGRAMDB_H
+#ifndef DEEPC_PROGRAMDB_H
+#define DEEPC_PROGRAMDB_H
 
 #include <map>
 #include <vector>
 #include <string>
+#include <memory>
 #include <lmdb.h>
+
+
+namespace deepC
+{
+
+
+// Forward declarations.
+class SourceFile;
+
 
 //
 // A program database. This stores intermediate information about a program
@@ -50,9 +60,6 @@ private:
     MDB_dbi  sourceFilesDbi_;
     MDB_dbi  sourceFilesIdsByFilenameDbi_;
     
-    // An error message.
-    std::string errorMessage_;
-
 private:
     // Load a source file.
 
@@ -64,12 +71,30 @@ public:
     bool isOpen() const { return isOpen_; }
     
     // Source file list.
-    GetResultCode getSourceFileByFileId(unsigned int fileId, std::string *filename, std::string *source, SourceModified *modified);
-    GetResultCode getSourceFileIdByFilename(const std::string &filename, unsigned int *fileId);
-    bool addSourceFile(const std::string &filename, const std::string &source, const SourceModified &modified, unsigned int *fileId);
-    
-    // Error accessor.
-    std::string getErrorMessage() const { return errorMessage_; }
+    bool getSourceFileByFileId(unsigned int fileId, std::shared_ptr<SourceFile> *source);
+    bool getSourceFileIdByFilename(const std::string &filename, unsigned int *fileId);
+    bool addSourceFile(std::shared_ptr<SourceFile> source, unsigned int *fileId);
 };
 
-#endif // PROGRAMDB_H
+
+//
+// An exception thrown when the program database fails.
+//
+
+class ProgramDbException : public std::exception
+{
+    std::string message_;
+    
+public:
+    ProgramDbException(const std::string &message) : message_(message) {}
+    
+    const char * what () const throw ()
+    {
+    	return message_.c_str();
+    }
+};
+
+
+} // namespace deepC
+
+#endif // DEEPC_PROGRAMDB_H

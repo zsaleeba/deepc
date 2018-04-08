@@ -1,5 +1,9 @@
-#ifndef PARSETREE_H
-#define PARSETREE_H
+#ifndef DEEPC_PARSETREE_H
+#define DEEPC_PARSETREE_H
+
+
+namespace deepC
+{
 
 
 class ParseTree
@@ -8,4 +12,7 @@ public:
     ParseTree();
 };
 
-#endif // PARSETREE_H
+
+} // namespace deepC
+
+#endif // DEEPC_PARSETREE_H

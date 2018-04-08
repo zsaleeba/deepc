@@ -1,14 +1,20 @@
-#ifndef COMPILER_H
-#define COMPILER_H
+#ifndef DEEPC_COMPILER_H
+#define DEEPC_COMPILER_H
+
+#include <memory>
 
 #include "compileargs.h"
 #include "programdb.h"
 
 
+namespace deepC
+{
+
+
 // Forward declarations.
 class Preprocessor;
-class Lexer;
-class Parser;
+class CLexer;
+class CParser;
 
 
 //
@@ -20,19 +26,33 @@ class Parser;
 class Compiler
 {
 private:
+    const CompileArgs            &args_;
+    
+private:
     // A single instance of program database class is used throughout the run.
-    ProgramDb     pdb_;
+    std::shared_ptr<ProgramDb>    pdb_;
 
     // An instance of the lexer and parser are created when compiling each file.
-    Preprocessor *preProc_;
-    Lexer        *lexer_;
-    Parser       *parser_;
+    std::shared_ptr<Preprocessor> preProc_;
+    std::shared_ptr<CLexer>        lexer_;
+    std::shared_ptr<CParser>       parser_;
+
+private:
+    // Compilation phases.
+    bool preprocess(const std::string &sourceFileName);
+    bool lex(const std::string &sourceFileName);
+    bool parse(const std::string &sourceFileName);
+    bool semantic(const std::string &sourceFileName);
+    bool optimise(const std::string &sourceFileName);
+    bool codegen(const std::string &sourceFileName);
 
 public:
-    Compiler();
+    Compiler(const CompileArgs &args);
 
-    bool preprocess(const CompileArgs &args, const std::string sourceFileName);
-    bool compile(const CompileArgs &args, const std::string sourceFileName);
+    bool compile(const std::string &sourceFileName);
 };
 
-#endif // COMPILER_H
+
+} // namespace deepC
+
+#endif // DEEPC_COMPILER_H

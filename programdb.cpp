@@ -20,6 +20,7 @@
 namespace deepC
 {
 
+
 //
 // A program database. This stores intermediate information about a program
 // which is used to quickly resume compilation on subsequent executions.
@@ -41,65 +42,44 @@ ProgramDb::ProgramDb(const std::string &filename) :
     // Open the environment.
     int rc = mdb_env_create(&env_);
     if (rc)
-    {
-        errorMessage_ = std::string("mdb_env_create: ") + mdb_strerror(rc);
-        return;
-    }
+        throw ProgramDbException(std::string("mdb_env_create: ") + mdb_strerror(rc));
     
     rc = mdb_env_set_mapsize(env_, 1UL * 1024UL * 1024UL * 1024UL); /* 1 GiB */
     if (rc)
-    {
-        errorMessage_ = std::string("mdb_env_set_mapsize: ") + mdb_strerror(rc);
-        return;
-    }
+        throw ProgramDbException(std::string("mdb_env_set_mapsize: ") + mdb_strerror(rc));
     
     rc = mdb_env_open(env_, filename.c_str(), 0, 0664);
     if (rc)
-    {
-        errorMessage_ = std::string("mdb_env_open: ") + mdb_strerror(rc);
-        return;
-    }
+        throw ProgramDbException(std::string("mdb_env_open: ") + mdb_strerror(rc));
     
     rc = mdb_env_set_maxdbs(env_, 32);
-    if (rc)
-    {
-        errorMessage_ = std::string("mdb_env_set_maxdbs: ") + mdb_strerror(rc);
-        return;
-    }
+        throw ProgramDbException(std::string("mdb_env_set_maxdbs: ") + mdb_strerror(rc));
     
     // Open the transaction we'll use to open the databases.
     MDB_txn *txn = nullptr;
     rc = mdb_txn_begin(env_, nullptr, 0, &txn);
     if (rc)
-    {
-        errorMessage_ = std::string("mdb_txn_begin: ") + mdb_strerror(rc);
-        return;
-    }
+        throw ProgramDbException(std::string("mdb_txn_begin: ") + mdb_strerror(rc));
     
     // Open the databases.
     rc = mdb_dbi_open(txn, "SourceFiles", MDB_INTEGERKEY | MDB_CREATE, &sourceFilesDbi_);
     if (rc)
     {
-        errorMessage_ = std::string("mdb_dbi_open(SourceFiles): ") + mdb_strerror(rc);
         mdb_txn_abort(txn);
-        return;
+        throw ProgramDbException(std::string("mdb_dbi_open(SourceFiles): ") + mdb_strerror(rc));
     }
     
     rc = mdb_dbi_open(txn, "SourceFileIdsByFilename", MDB_CREATE, &sourceFilesIdsByFilenameDbi_);
     if (rc)
     {
-        errorMessage_ = std::string("mdb_dbi_open(SourceFileIdsByFilename): ") + mdb_strerror(rc);
         mdb_txn_abort(txn);
-        return;
+        throw ProgramDbException(std::string("mdb_dbi_open(SourceFileIdsByFilename): ") + mdb_strerror(rc));
     }
     
     // Close the transaction without closing the databases.
     rc = mdb_txn_commit(txn);
     if (rc)
-    {
-        errorMessage_ = std::string("mdb_txn_commit: ") + mdb_strerror(rc);
-        return;
-    }
+        throw ProgramDbException(std::string("mdb_txn_commit: ") + mdb_strerror(rc));
 
     isOpen_ = true;
 }
@@ -115,16 +95,13 @@ ProgramDb::~ProgramDb()
 }
 
 
-ProgramDb::GetResultCode ProgramDb::getSourceFileByFileId(unsigned int fileId, std::string *filename, std::string *source, SourceModified *modified)
+bool ProgramDb::getSourceFileByFileId(unsigned int fileId, std::shared_ptr<SourceFile> *source)
 {
     // Open the transaction.
     MDB_txn *txn;
     int rc = mdb_txn_begin(env_, nullptr, MDB_RDONLY, &txn);
     if (rc)
-    {
-        errorMessage_ = std::string("can't get source file by file id, mdb_txn_begin: ") + mdb_strerror(rc);
-        return ProgramDb::GetResultCode::ERROR;
-    }
+        throw ProgramDbException(std::string("can't get source file by file id, mdb_txn_begin: ") + mdb_strerror(rc));
     
     // Get the record.
     MDB_val k;
@@ -152,22 +129,21 @@ ProgramDb::GetResultCode ProgramDb::getSourceFileByFileId(unsigned int fileId, s
         }
         
         mdb_txn_abort(txn);
-        return ProgramDb::GetResultCode::FOUND;
+        return true;
     }
 
     // Errors fall through to here.
     *filename = std::string();
-    *modified = SourceModified();
+    *modified = "";
     mdb_txn_abort(txn);
     
     if (rc == MDB_NOTFOUND)
     {
-        return ProgramDb::GetResultCode::NOT_FOUND;
+        false;
     }
     else
     {
-        errorMessage_ = std::string("can't get source file by file id ") + std::to_string(fileId) + ": " + mdb_strerror(rc);
-        return ProgramDb::GetResultCode::ERROR;
+        throw ProgramDbException(std::string("can't get source file by file id ") + std::to_string(fileId) + ": " + mdb_strerror(rc));
     }
 }
 
@@ -178,10 +154,7 @@ ProgramDb::GetResultCode ProgramDb::getSourceFileIdByFilename(const std::string 
     MDB_txn *txn;
     int rc = mdb_txn_begin(env_, nullptr, MDB_RDONLY, &txn);
     if (rc)
-    {
-        errorMessage_ = std::string("can't get source file id by filename, mdb_txn_begin: ") + mdb_strerror(rc);
-        return ProgramDb::GetResultCode::ERROR;
-    }
+        throw ProgramDbException(std::string("can't get source file id by filename, mdb_txn_begin: ") + mdb_strerror(rc));
     
     // Get the record.
     MDB_val k;
@@ -193,7 +166,7 @@ ProgramDb::GetResultCode ProgramDb::getSourceFileIdByFilename(const std::string 
     {
         *fileId = *reinterpret_cast<unsigned int *>(v.mv_data);
         mdb_txn_abort(txn);
-        return ProgramDb::GetResultCode::FOUND;
+        return true;
     }
 
     // Errors fall through to here.
@@ -202,17 +175,16 @@ ProgramDb::GetResultCode ProgramDb::getSourceFileIdByFilename(const std::string 
     
     if (rc == MDB_NOTFOUND)
     {
-        return ProgramDb::GetResultCode::NOT_FOUND;
+        return false;
     }
     else
     {
-        errorMessage_ = std::string("can't get source file id by filename ") + filename + ": " + mdb_strerror(rc);
-        return ProgramDb::GetResultCode::ERROR;    
+        throw ProgramDbException(std::string("can't get source file id by filename ") + filename + ": " + mdb_strerror(rc));
     }
 }
 
 
-bool ProgramDb::addSourceFile(const std::string &filename, const std::string &source, const SourceModified &modified, unsigned int *fileId)
+bool ProgramDb::addSourceFile(const std::string &filename, const std::string &source, unsigned int *fileId)
 {
 #if 0
     // Get the file modification time.
@@ -268,8 +240,7 @@ bool ProgramDb::addSourceFile(const std::string &filename, const std::string &so
     int rc = mdb_txn_begin(env_, nullptr, 0, &txn);
     if (rc)
     {
-        errorMessage_ = std::string("can't add source file, mdb_txn_begin: ") + mdb_strerror(rc);
-        return false;
+        throw ProgramDbException(std::string("can't add source file, mdb_txn_begin: ") + mdb_strerror(rc));
     }
     
     // See if it already exists.
@@ -281,9 +252,8 @@ bool ProgramDb::addSourceFile(const std::string &filename, const std::string &so
     if (rc != 0 && rc != MDB_NOTFOUND)
     {
         // Error getting it.
-        errorMessage_ = std::string("can't add source file, mdb_get(") + filename + "): " + mdb_strerror(rc);
         mdb_txn_abort(txn);
-        return false;
+        throw ProgramDbException(std::string("can't add source file, mdb_get(") + filename + "): " + mdb_strerror(rc));
     }
     else if (rc == 0)
     {
@@ -297,9 +267,8 @@ bool ProgramDb::addSourceFile(const std::string &filename, const std::string &so
         rc = mdb_cursor_open(txn, sourceFilesDbi_, &cursor);
         if (rc)
         {
-            errorMessage_ = std::string("can't add source file, mdb_cursor_open(") + filename + "): " + mdb_strerror(rc);
             mdb_txn_abort(txn);
-            return false;    
+            throw ProgramDbException(std::string("can't add source file, mdb_cursor_open(") + filename + "): " + mdb_strerror(rc));
         }
         
         // Get the last entry in the SourceFiles db.
@@ -308,9 +277,8 @@ bool ProgramDb::addSourceFile(const std::string &filename, const std::string &so
         rc = mdb_cursor_get(cursor, &numKey, &numData, MDB_LAST);
         if (rc)
         {
-            errorMessage_ = std::string("can't add source file, mdb_cursor_get(") + filename + "): " + mdb_strerror(rc);
             mdb_txn_abort(txn);
-            return false;    
+            throw ProgramDbException(std::string("can't add source file, mdb_cursor_get(") + filename + "): " + mdb_strerror(rc));
         }
         
         // Increment the file id.
@@ -322,9 +290,8 @@ bool ProgramDb::addSourceFile(const std::string &filename, const std::string &so
         rc = mdb_put(txn, sourceFilesIdsByFilenameDbi_, &fileKey, &numData, MDB_NODUPDATA);
         if (rc)
         {
-            errorMessage_ = std::string("can't add source file, mdb_put(") + std::to_string(*fileId) + "): " + mdb_strerror(rc);
             mdb_txn_abort(txn);
-            return false;    
+            throw ProgramDbException(std::string("can't add source file, mdb_put(") + std::to_string(*fileId) + "): " + mdb_strerror(rc));
         }
     }
 
@@ -338,17 +305,15 @@ bool ProgramDb::addSourceFile(const std::string &filename, const std::string &so
     rc = mdb_put(txn, sourceFilesDbi_, &sourceFileKey, &sourceFileVal, 0);
     if (rc)
     {
-        errorMessage_ = std::string("can't add source file, mdb_put(") + std::to_string(*fileId) + "," + filename + "): " + mdb_strerror(rc);
         mdb_txn_abort(txn);
-        return false;    
+        throw ProgramDbException(std::string("can't add source file, mdb_put(") + std::to_string(*fileId) + "," + filename + "): " + mdb_strerror(rc));
     }
     
     rc = mdb_txn_commit(txn);
     if (rc)
     {
-        errorMessage_ = std::string("can't add source file, mdb_txn_commit(") + filename + "): " + mdb_strerror(rc);
         mdb_txn_abort(txn);
-        return false;    
+        throw ProgramDbException(std::string("can't add source file, mdb_txn_commit(") + filename + "): " + mdb_strerror(rc));
     }
     
     return true;

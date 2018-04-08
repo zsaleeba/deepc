@@ -1,5 +1,9 @@
-#ifndef TOKEN_H
-#define TOKEN_H
+#ifndef DEEPC_TOKEN_H
+#define DEEPC_TOKEN_H
+
+
+namespace deepC
+{
 
 
 class Token
@@ -8,4 +12,7 @@ public:
     Token();
 };
 
-#endif // TOKEN_H
+
+} // namespace deepC
+
+#endif // DEEPC_TOKEN_H

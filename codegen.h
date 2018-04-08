@@ -1,5 +1,9 @@
-#ifndef CODEGEN_H
-#define CODEGEN_H
+#ifndef DEEPC_CODEGEN_H
+#define DEEPC_CODEGEN_H
+
+
+namespace deepC
+{
 
 
 class CodeGen
@@ -8,4 +12,7 @@ public:
     CodeGen();
 };
 
-#endif // CODEGEN_H
+
+} // namespace deepC
+
+#endif // DEEPC_CODEGEN_H
