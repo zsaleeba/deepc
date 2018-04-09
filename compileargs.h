@@ -24,9 +24,17 @@ private:
     std::vector<std::string> defines_;
     std::vector<std::string> warnings_;
     std::string programDbFileName_;
+    std::string target_;
+
+private:
+    // Do substitutions on a single string.
+    void substituteStr(std::string *str);
 
 public:
     CompileArgs();
+
+    // Perform variable substitutions on all the arguments.
+    void substituteVariables();
 
     // Accessors.
     int  getOptimisationLevel() const                   { return optimisationLevel_; }
@@ -48,6 +56,8 @@ public:
     void addWarning(const std::string &warning)         { warnings_.push_back(warning); }
     std::string getProgramDbFileName() const               { return programDbFileName_; }
     void setProgramDbFileName(const std::string &programDbFileName) { programDbFileName_ = programDbFileName; }
+    std::string target() const   { return target_; }
+    void setTarget(const std::string &target) { target_ = target; }
 };
 
 

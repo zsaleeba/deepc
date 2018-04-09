@@ -18,13 +18,11 @@
 #include <memory>
 #include <lmdb.h>
 
+#include "sourcefile.h"
+
 
 namespace deepC
 {
-
-
-// Forward declarations.
-class SourceFile;
 
 
 //
@@ -32,7 +30,7 @@ class SourceFile;
 // which is used to quickly resume compilation on subsequent executions.
 //
 // Stored in this database:
-// 
+//
 //  * a list of source files.
 //  * the contents of the source files.
 //  * the tokenised contents of each of the source files.
@@ -55,11 +53,11 @@ private:
     // A map of all the source files.
     MDB_env *env_;
     bool     isOpen_;
-    
+
     // The sub-databases we plan to use.
     MDB_dbi  sourceFilesDbi_;
     MDB_dbi  sourceFilesIdsByFilenameDbi_;
-    
+
 private:
     // Load a source file.
 
@@ -67,11 +65,12 @@ public:
     // Constructor for the source bag.
     ProgramDb(const std::string &filename);
     ~ProgramDb();
-    
+
     bool isOpen() const { return isOpen_; }
-    
+
     // Source file list.
     bool getSourceFileByFileId(unsigned int fileId, std::shared_ptr<SourceFile> *source);
+    bool getSourceFileModifiedTimeByFileId(unsigned int fileId, SourceFile::TimeDate *modified);
     bool getSourceFileIdByFilename(const std::string &filename, unsigned int *fileId);
     bool addSourceFile(std::shared_ptr<SourceFile> source, unsigned int *fileId);
 };
@@ -84,13 +83,13 @@ public:
 class ProgramDbException : public std::exception
 {
     std::string message_;
-    
+
 public:
     ProgramDbException(const std::string &message) : message_(message) {}
-    
+
     const char * what () const throw ()
     {
-    	return message_.c_str();
+        return message_.c_str();
     }
 };
 

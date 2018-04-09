@@ -11,6 +11,7 @@ src =  ['clexer.cpp',
 	'parsetree.cpp', 
 	'preprocessor.cpp', 
 	'programdb.cpp', 
+	'sourcefile.cpp',
 	'token.cpp']
 
 flatc = find_program('flatc')
@@ -19,4 +20,6 @@ gen_src = custom_target('gen-sourcefile',
 	output: ['sourcefile_generated.h'],
 	command: [flatc, '--cpp', '--binary', '@INPUT@'])
 
-executable('deepc', src, gen_src)
+lmdb_lib = meson.get_compiler('cpp').find_library('lmdb')
+
+executable('deepc', src, gen_src, dependencies : lmdb_lib)
