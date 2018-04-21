@@ -36,7 +36,7 @@ class Preprocessor
 
 public:
     Preprocessor(std::shared_ptr<ProgramDb> pdb, const CompileArgs &args, const std::string &sourceFileName);
-    const std::string &getPreprocessedText() { return preProcText_; }
+    const std::string &preprocessedText() { return preProcText_; }
 };
 
 

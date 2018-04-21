@@ -1,14 +1,9 @@
 namespace deepC.fb;
 
-struct SourceModified {
-    seconds     : ulong;
-    nanoseconds : uint;
-}
-
 table SourceFile {
     filename : string;
     source   : string;
-    modified : SourceModified;
+    modified : ulong;
 }
 
 root_type SourceFile;

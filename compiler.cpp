@@ -16,7 +16,7 @@ Compiler::Compiler(const CompileArgs &args) :
     args_(args)
 {
     // A single instance of program database class is used throughout the run.
-    pdb_ = std::make_shared<ProgramDb>(args.getProgramDbFileName());
+    pdb_ = std::make_shared<ProgramDb>(args.programDbFileName());
 }
 
 

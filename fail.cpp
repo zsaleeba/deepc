@@ -26,7 +26,7 @@ static void msgfv(const SourcePos &pos, const char *format, va_list args)
     }
     else
     {
-        std::cout << pos.getFileName() << ":" << pos.getLine() << ":" << pos.getColumn() << ": ";
+        std::cout << pos.fileName() << ":" << pos.line() << ":" << pos.column() << ": ";
     }
 
     char line[maxErrorLine];

@@ -3,48 +3,97 @@
 
 #include <ctime>
 #include <string>
+#include <string_view>
+#include <chrono>
+#include <mutex>
+#include <memory>
+
+#include "storable.h"
+#include "deeptypes.h"
 
 
 namespace deepC
 {
 
 
-class SourceFile
+//
+// Represents a source file in the system. May contain the full source text
+// or if needToRead_ is true we may need to read it first. The id_ is the
+// database id if the source file has been stored in the database or 0 if 
+// not.
+//
+
+class SourceFile : public Storable
 {
+protected:
+    // Members.
+    std::string      fileName_;      // Path to source file.
+    TimePoint        modified_;      // When it was last modified.
+    std::string_view sourceText_;    // The full source text.
+
+protected:
+    // Constructors.
+    explicit SourceFile(const std::string &fileName) : fileName_(fileName) {}
+    explicit SourceFile(const std::string &fileName, const TimePoint &modified) : fileName_(fileName), modified_(modified) {}
+    virtual ~SourceFile() {}
+    
 public:
-    // Time that a source file was modified.
-    class TimeDate
-    {
-    private:
-        time_t   seconds_;
-        uint32_t nanoseconds_;
+    // Accessors.
+    const std::string      &fileName()   const { return fileName_; }
+    const TimePoint        &modified()   const { return modified_; }
+    const std::string_view &sourceText() const { return sourceText_; }
 
-    public:
-        explicit TimeDate(time_t seconds, uint32_t nanoseconds) : seconds_(seconds), nanoseconds_(nanoseconds) {}
-        explicit TimeDate(const TimeDate &td) : seconds_(td.seconds_), nanoseconds_(td.nanoseconds_) {}
+    void setFileName(const std::string &fileName) { fileName_ = fileName; }
+    void setModified(const TimePoint &modified)   { modified_ = modified; }
+    void setSourceText(std::string_view &source)  { sourceText_ = source; }
+};
 
-        time_t seconds() const       { return seconds_; }
-        uint32_t nanoseconds() const { return nanoseconds_; }
-    };
 
+//
+// Represents a source file in the system. May contain the full source text
+// or if needToRead_ is true we may need to read it first. The id_ is the
+// database id if the source file has been stored in the database or 0 if 
+// not.
+//
+
+class SourceFileOnFilesystem : public SourceFile
+{
 private:
     // Members.
-    std::string fileName_;
-    TimeDate    modified_;
-    std::string sourceText_;
-    bool        needToRead_;
-
-private:
-    // Read the source text from the file.
-    void readSourceText();
+    int      fd_;               // The file descriptor of the mmap()ed file.
+    void    *mapData_;          // The memory mapped data.
+    size_t   mapSize_;          // The size of the memory mapped area.
 
 public:
-    SourceFile(const std::string &fileName);
-    SourceFile(const std::string &fileName, const std::string &sourceText, const TimeDate &modified);
+    // Constructors.
+    explicit SourceFileOnFilesystem(const std::string &fileName);
+    virtual ~SourceFileOnFilesystem();
+    
+    // To store this type in the database.
+    void store(ProgramDb &pdb) override;
+};
 
-    const std::string &fileName() const { return fileName_; }
-    const std::string &sourceText()     { if (needToRead_) readSourceText(); return sourceText_; }
-    const TimeDate    &modified() const { return modified_; }
+
+//
+// Represents a source file in the system. May contain the full source text
+// or if needToRead_ is true we may need to read it first. The id_ is the
+// database id if the source file has been stored in the database or 0 if 
+// not.
+//
+
+class SourceFileOnDatabase : public SourceFile
+{
+private:
+    // Members.
+    std::shared_ptr<ProgramDb> pdb_; // We keep this to make sure the database isn't closed prematurely.
+
+public:
+    // Constructors.
+    explicit SourceFileOnDatabase(std::shared_ptr<ProgramDb> pdb, const std::string &fileName);
+    virtual ~SourceFileOnDatabase();
+    
+    // To store this type in the database.
+    void store(ProgramDb &pdb) override;
 };
 
 

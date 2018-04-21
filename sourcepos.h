@@ -19,10 +19,10 @@ public:
     explicit SourcePos() : line_(0), column_(0) {}
     explicit SourcePos(const std::string &fileName, int line, int column) : fileName_(fileName), line_(line), column_(column) {}
 
-    const std::string &getFileName() const { return fileName_; }
-    int                getLine() const     { return line_; }
-    int                getColumn() const   { return column_; }
-    bool               exists() const      { return !fileName_.empty(); }
+    const std::string &fileName() const { return fileName_; }
+    int                line() const     { return line_; }
+    int                column() const   { return column_; }
+    bool               exists() const   { return !fileName_.empty(); }
 };
 
 

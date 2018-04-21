@@ -19,6 +19,7 @@
 #include <lmdb.h>
 
 #include "sourcefile.h"
+#include "deeptypes.h"
 
 
 namespace deepC
@@ -49,6 +50,33 @@ public:
         ERROR
     };
 
+
+    //
+    // An RAII wrapper for database transactions.
+    //
+
+    class Transaction
+    {
+    protected:
+        MDB_txn *txn_;
+        bool     committed_;
+
+    public:
+        explicit Transaction(ProgramDb &pdb, bool writeable);
+        ~Transaction();
+
+        void     commit();
+
+        MDB_txn *getTxn() { return txn_; }
+
+        bool     getById(MDB_dbi dbi, uint32_t id, MDB_val *v);
+        bool     getByString(MDB_dbi dbi, const std::string &key, MDB_val *v);
+        uint32_t addRow(MDB_dbi dbi, const MDB_val &val);
+        void     putRow(MDB_dbi dbi, uint32_t id, const MDB_val &val);
+        void     addStringToIdMapping(MDB_dbi dbi, const std::string &str, uint32_t id);
+    };
+
+
 private:
     // A map of all the source files.
     MDB_env *env_;
@@ -58,21 +86,25 @@ private:
     MDB_dbi  sourceFilesDbi_;
     MDB_dbi  sourceFilesIdsByFilenameDbi_;
 
-private:
-    // Load a source file.
+    // Write locks for each of the sub-databases;
+    std::mutex sourceFilesWriteLock_;
+
+protected:
+    // Generate a new id in sourceFiles.
+    uint32_t createSourceFilesId(Transaction &txn);
 
 public:
     // Constructor for the source bag.
     ProgramDb(const std::string &filename);
     ~ProgramDb();
 
-    bool isOpen() const { return isOpen_; }
+    bool     isOpen() const { return isOpen_; }
+    MDB_env *getEnv()       { return env_; }
 
-    // Source file list.
-    bool getSourceFileByFileId(unsigned int fileId, std::shared_ptr<SourceFile> *source);
-    bool getSourceFileModifiedTimeByFileId(unsigned int fileId, SourceFile::TimeDate *modified);
-    bool getSourceFileIdByFilename(const std::string &filename, unsigned int *fileId);
-    bool addSourceFile(std::shared_ptr<SourceFile> source, unsigned int *fileId);
+    // Source file access.
+    bool getSourceFileByFileId(uint32_t fileId, SourceFileOnDatabase *source);
+    bool getSourceFileIdByFilename(const std::string &filename, uint32_t *fileId);
+    void putSourceFile(SourceFile &source);
 };
 
 

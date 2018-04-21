@@ -96,227 +96,277 @@ ProgramDb::~ProgramDb()
 }
 
 
-bool ProgramDb::getSourceFileByFileId(unsigned int fileId, std::shared_ptr<SourceFile> *source)
+//
+// Get a source file from the database given its file id.
+//
+
+bool ProgramDb::getSourceFileByFileId(uint32_t fileId, SourceFileOnDatabase *source)
 {
-    // Open the transaction.
-    MDB_txn *txn;
-    int rc = mdb_txn_begin(env_, nullptr, MDB_RDONLY, &txn);
-    if (rc)
-        throw ProgramDbException(std::string("can't get source file by file id, mdb_txn_begin: ") + mdb_strerror(rc));
+    Transaction txn(*this, false);
+    MDB_val v;
 
     // Get the record.
-    MDB_val k;
-    MDB_val v;
-    k.mv_size = sizeof(unsigned int);
-    k.mv_data = reinterpret_cast<void *>(&fileId);
-    rc = mdb_get(txn, sourceFilesDbi_, &k, &v);
-    if (rc)
-    {
-        mdb_txn_abort(txn);
-
-        if (rc == MDB_NOTFOUND)
-        {
-            // Not found.
+    try {
+        if (!txn.getById(sourceFilesDbi_, fileId, &v))
             return false;
-        }
-        else
-        {
-            // Failed.
-            throw ProgramDbException(std::string("can't get source file by file id ") + std::to_string(fileId) + ": " + mdb_strerror(rc));
-        }
+    }
+    catch (const ProgramDbException &e) {
+        throw ProgramDbException(std::string("can't get source file by file id, ") + e.what());
     }
 
     // Convert the binary form into a SourceFile.
     const fb::SourceFile *sf = fb::GetSourceFile(v.mv_data);
-    *source = std::make_shared<SourceFile>(sf->filename()->str(), sf->source()->str(), SourceFile::TimeDate(sf->modified()->seconds(), sf->modified()->nanoseconds()));
+    std::string_view src(sf->source()->data(), sf->source()->size());
+    source->setId(fileId);
+    source->setFileName(sf->filename()->str());
+    source->setModified(TimePoint(Duration(sf->modified())));
+    source->setSourceText(src);
 
-    mdb_txn_abort(txn);
     return true;
 }
 
 
-bool ProgramDb::getSourceFileModifiedTimeByFileId(unsigned int fileId, SourceFile::TimeDate *modified)
+//
+// Given the source file name, find the file id.
+//
+
+bool ProgramDb::getSourceFileIdByFilename(const std::string &filename, uint32_t *fileId)
 {
-    // Open the transaction.
-    MDB_txn *txn;
-    int rc = mdb_txn_begin(env_, nullptr, MDB_RDONLY, &txn);
-    if (rc)
-        throw ProgramDbException(std::string("can't get source file by file id, mdb_txn_begin: ") + mdb_strerror(rc));
-
     // Get the record.
-    MDB_val k;
+    Transaction txn(*this, false);
     MDB_val v;
-    k.mv_size = sizeof(unsigned int);
-    k.mv_data = reinterpret_cast<void *>(&fileId);
-    rc = mdb_get(txn, sourceFilesDbi_, &k, &v);
-    if (rc)
-    {
-        mdb_txn_abort(txn);
 
-        if (rc == MDB_NOTFOUND)
-        {
-            // Not found.
+    try {
+        if (!txn.getByString(sourceFilesIdsByFilenameDbi_, filename, &v))
             return false;
-        }
-        else
-        {
-            // Failed.
-            throw ProgramDbException(std::string("can't get source file by file id ") + std::to_string(fileId) + ": " + mdb_strerror(rc));
-        }
+    }
+    catch (const ProgramDbException &e) {
+        throw ProgramDbException(std::string("can't get source file id, ") + e.what());
     }
 
-    // Convert the binary form into a SourceFile.
-    const fb::SourceFile *sf = fb::GetSourceFile(v.mv_data);
-    *modified = SourceFile::TimeDate(sf->modified()->seconds(), sf->modified()->nanoseconds());
-
-    mdb_txn_abort(txn);
+    *fileId = *reinterpret_cast<uint32_t *>(v.mv_data);
     return true;
 }
 
 
-bool ProgramDb::getSourceFileIdByFilename(const std::string &filename, unsigned int *fileId)
-{
-    // Open the transaction.
-    MDB_txn *txn;
-    int rc = mdb_txn_begin(env_, nullptr, MDB_RDONLY, &txn);
-    if (rc)
-        throw ProgramDbException(std::string("can't get source file id by filename, mdb_txn_begin: ") + mdb_strerror(rc));
+//
+// Store a SourceFile in the database.
+//
 
-    // Get the record.
-    MDB_val k;
-    MDB_val v;
-    k.mv_size = filename.length();
-    k.mv_data = reinterpret_cast<void *>(const_cast<char *>(filename.data()));
-    rc = mdb_get(txn, sourceFilesIdsByFilenameDbi_, &k, &v);
-    if (!rc)
-    {
-        *fileId = *reinterpret_cast<unsigned int *>(v.mv_data);
-        mdb_txn_abort(txn);
-        return true;
-    }
-
-    // Errors fall through to here.
-    *fileId = 0;
-    mdb_txn_abort(txn);
-
-    if (rc == MDB_NOTFOUND)
-    {
-        return false;
-    }
-    else
-    {
-        throw ProgramDbException(std::string("can't get source file id by filename ") + filename + ": " + mdb_strerror(rc));
-    }
-}
-
-
-bool ProgramDb::addSourceFile(std::shared_ptr<SourceFile> source, unsigned int *fileId)
+void ProgramDb::putSourceFile(SourceFile &source)
 {
     // Encode the SourceFile data.
-    flatbuffers::FlatBufferBuilder builder(source->fileName().length() + source->sourceText().length() + 1024);
-    auto filenameStr = builder.CreateString(source->fileName());
-    auto sourceStr = builder.CreateString(source->sourceText());
-    fb::SourceModified modified(source->modified().seconds(), source->modified().nanoseconds());
-    fb::CreateSourceFile(builder, filenameStr, sourceStr, &modified);
+    flatbuffers::FlatBufferBuilder builder(source.fileName().length() + source.sourceText().length() + 1024);
+    auto filenameStr = builder.CreateString(source.fileName());
+    auto sourceStr = builder.CreateString(std::string(source.sourceText()));
+    fb::CreateSourceFile(builder, filenameStr, sourceStr, source.modified().time_since_epoch().count());
 
-#if 0
-    // Close the file.
-    if (munmap(mapFile, fileInfo.st_size) < 0)
+    MDB_val v;
+    v.mv_data = builder.GetBufferPointer();
+    v.mv_size = builder.GetSize();
+
+    // Do we already know the file id?
+    std::lock_guard locker(sourceFilesWriteLock_);
+    Transaction txn(*this, true);
+    uint32_t fileId = source.id();
+    if (fileId == 0)
     {
-        errorMessage_ = std::string("can't add source file, munmap(") + filename + "): " + strerror(errno);
-        close(fd);
-        return false;
+        // See if it already exists in the database.
+        getSourceFileIdByFilename(source.fileName(), &fileId);
     }
 
-    if (close(fd) < 0)
+    // If this file has no file id, make one.
+    if (fileId == 0)
     {
-        errorMessage_ = std::string("can't add source file, close(") + filename + "): " + strerror(errno);
-        return false;
-    }
-#endif
+        // Store the row under a new id.
+        fileId = txn.addRow(sourceFilesDbi_, v);
 
-    // Open the transaction.
-    MDB_txn *txn;
-    int rc = mdb_txn_begin(env_, nullptr, 0, &txn);
-    if (rc)
-    {
-        throw ProgramDbException(std::string("can't add source file, mdb_txn_begin: ") + mdb_strerror(rc));
-    }
+        // Add the name to id lookup.
+        txn.addStringToIdMapping(sourceFilesIdsByFilenameDbi_, source.fileName(), fileId);
 
-    // See if it already exists.
-    MDB_val fileKey;
-    MDB_val fileVal;
-    fileKey.mv_size = source->fileName().length();
-    fileKey.mv_data = reinterpret_cast<void *>(const_cast<char *>(source->fileName().data()));
-    rc = mdb_get(txn, sourceFilesIdsByFilenameDbi_, &fileKey, &fileVal);
-    if (rc != 0 && rc != MDB_NOTFOUND)
-    {
-        // Error getting it.
-        mdb_txn_abort(txn);
-        throw ProgramDbException(std::string("can't add source file, mdb_get(") + source->fileName() + "): " + mdb_strerror(rc));
-    }
-    else if (rc == 0)
-    {
-        // Already exists, get the existing file id and update the source.
-        *fileId = *reinterpret_cast<unsigned int *>(fileVal.mv_data);
+        // Take note of the id.
+        source.setId(fileId);
     }
     else
     {
-        // Doesn't exist, get a new file id and add it.
-        MDB_cursor *cursor = nullptr;
-        rc = mdb_cursor_open(txn, sourceFilesDbi_, &cursor);
-        if (rc)
-        {
-            mdb_txn_abort(txn);
-            throw ProgramDbException(std::string("can't add source file, mdb_cursor_open(") + source->fileName() + "): " + mdb_strerror(rc));
-        }
-
-        // Get the last entry in the SourceFiles db.
-        MDB_val numKey;
-        MDB_val numData;
-        rc = mdb_cursor_get(cursor, &numKey, &numData, MDB_LAST);
-        if (rc)
-        {
-            mdb_txn_abort(txn);
-            throw ProgramDbException(std::string("can't add source file, mdb_cursor_get(") + source->fileName() + "): " + mdb_strerror(rc));
-        }
-
-        // Increment the file id.
-        unsigned int *numDataIdPtr = reinterpret_cast<unsigned int *>(numKey.mv_data);
-        (*numDataIdPtr)++;
-        *fileId = *numDataIdPtr;
-
-        // Store the name to id lookup.
-        rc = mdb_put(txn, sourceFilesIdsByFilenameDbi_, &fileKey, &numData, MDB_NODUPDATA);
-        if (rc)
-        {
-            mdb_txn_abort(txn);
-            throw ProgramDbException(std::string("can't add source file, mdb_put(") + std::to_string(*fileId) + "): " + mdb_strerror(rc));
-        }
+        // Store an existing row.
+        txn.putRow(sourceFilesDbi_, fileId, v);
     }
 
-    // Write the SourceFile data.
-    MDB_val sourceFileKey;
-    MDB_val sourceFileVal;
-    sourceFileKey.mv_size = sizeof(unsigned int);
-    sourceFileKey.mv_data = reinterpret_cast<void *>(fileId);
-    sourceFileVal.mv_size = builder.GetSize();
-    sourceFileVal.mv_data = builder.GetBufferPointer();
-    rc = mdb_put(txn, sourceFilesDbi_, &sourceFileKey, &sourceFileVal, 0);
+    // Commit the transaction.
+    txn.commit();
+}
+
+
+//
+// Constructor for RAII ProgramDbTransaction.
+//
+
+ProgramDb::Transaction::Transaction(ProgramDb &pdb, bool writeable) :
+    txn_(nullptr),
+    committed_(false)
+{
+    int rc = mdb_txn_begin(pdb.getEnv(), nullptr, writeable ? 0 : MDB_RDONLY, &txn_);
+    if (rc)
+        throw ProgramDbException(std::string("can't create transaction on program database: ") + mdb_strerror(rc));
+}
+
+
+//
+// Destructor for RAII ProgramDbTransaction.
+//
+
+ProgramDb::Transaction::~Transaction()
+{
+    if (!committed_)
+    {
+        mdb_txn_abort(txn_);
+    }
+}
+
+
+//
+// Commit a transaction before deleting the transaction object.
+//
+
+void ProgramDb::Transaction::commit()
+{
+    int rc = mdb_txn_commit(txn_);
     if (rc)
     {
-        mdb_txn_abort(txn);
-        throw ProgramDbException(std::string("can't add source file, mdb_put(") + std::to_string(*fileId) + "," + source->fileName() + "): " + mdb_strerror(rc));
+        mdb_txn_abort(txn_);
+        throw ProgramDbException(std::string("can't commit to program database: ") + mdb_strerror(rc));
     }
 
-    rc = mdb_txn_commit(txn);
+    committed_ = true;
+}
+
+
+//
+// Get an object by its database id.
+//
+
+bool ProgramDb::Transaction::getById(MDB_dbi dbi, uint32_t id, MDB_val *v)
+{
+    MDB_val k;
+    k.mv_size = sizeof(id);
+    k.mv_data = reinterpret_cast<void *>(&id);
+    int rc = mdb_get(txn_, dbi, &k, v);
     if (rc)
     {
-        mdb_txn_abort(txn);
-        throw ProgramDbException(std::string("can't add source file, mdb_txn_commit(") + source->fileName() + "): " + mdb_strerror(rc));
+        if (rc == MDB_NOTFOUND)
+        {
+            // Not found.
+            return false;
+        }
+        else
+        {
+            // Failed.
+            throw ProgramDbException(std::string("can't get by id ") + std::to_string(id) + ": " + mdb_strerror(rc));
+        }
     }
 
     return true;
+}
+
+
+//
+// Get an object by its string key.
+//
+
+bool ProgramDb::Transaction::getByString(MDB_dbi dbi, const std::string &key, MDB_val *v)
+{
+    MDB_val k;
+    k.mv_size = key.length();
+    k.mv_data = reinterpret_cast<void *>(const_cast<char *>((key.data())));
+    int rc = mdb_get(txn_, dbi, &k, v);
+    if (rc)
+    {
+        if (rc == MDB_NOTFOUND)
+        {
+            // Not found.
+            return false;
+        }
+        else
+        {
+            // Failed.
+            throw ProgramDbException(std::string("can't get by key '") + key + "': " + mdb_strerror(rc));
+        }
+    }
+
+    return true;
+}
+
+
+//
+// Store an item in the database with a new unique row id.
+//
+
+uint32_t ProgramDb::Transaction::addRow(MDB_dbi dbi, const MDB_val &val)
+{
+    // Doesn't exist, get a new file id and add it.
+    MDB_cursor *cursor = nullptr;
+    int rc = mdb_cursor_open(txn_, dbi, &cursor);
+    if (rc)
+        throw ProgramDbException(std::string("can't create new id: ") + mdb_strerror(rc));
+
+    // Get the last entry in the SourceFiles db.
+    MDB_val numKey;
+    MDB_val numData;
+    rc = mdb_cursor_get(cursor, &numKey, &numData, MDB_LAST);
+    if (rc)
+        throw ProgramDbException(std::string("can't get last id: ") + mdb_strerror(rc));
+
+    // Increment the file id.
+    uint32_t *numDataIdPtr = reinterpret_cast<uint32_t *>(numKey.mv_data);
+    (*numDataIdPtr)++;
+    uint32_t id = *numDataIdPtr;
+
+    // Write the SourceFile data.
+    MDB_val key;
+    key.mv_size = sizeof(id);
+    key.mv_data = reinterpret_cast<void *>(id);
+    rc = mdb_put(txn_, dbi, &key, const_cast<MDB_val *>(&val), 0);
+    if (rc)
+        throw ProgramDbException(std::string("can't add row ") + std::to_string(id) + ": " + mdb_strerror(rc));
+    
+    return id;
+}
+
+
+//
+// Rewrite an item in the database given its row id.
+//
+
+void ProgramDb::Transaction::putRow(MDB_dbi dbi, uint32_t id, const MDB_val &val)
+{
+    MDB_val key;
+    key.mv_size = sizeof(id);
+    key.mv_data = reinterpret_cast<void *>(id);
+
+    int rc = mdb_put(txn_, dbi, &key, const_cast<MDB_val *>(&val), 0);
+    if (rc)
+        throw ProgramDbException(std::string("can't put row ") + std::to_string(id) + ": " + mdb_strerror(rc));
+}
+
+
+//
+// Write an item into a string to id mapping database.
+// eg. filename to file id.
+//
+
+void ProgramDb::Transaction::addStringToIdMapping(MDB_dbi dbi, const std::string &str, uint32_t id)
+{
+    MDB_val key;
+    key.mv_size = str.size();
+    key.mv_data = reinterpret_cast<void *>(const_cast<char *>(str.data()));
+    MDB_val val;
+    val.mv_size = sizeof(id);
+    val.mv_data = reinterpret_cast<void *>(id);
+
+    int rc = mdb_put(txn_, dbi, &key, &val, 0);
+    if (rc)
+        throw ProgramDbException(std::string("can't put row ") + std::to_string(id) + ": " + mdb_strerror(rc));
 }
 
 

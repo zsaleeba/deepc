@@ -1,5 +1,5 @@
 project('deepc', 'cpp', 
-	default_options : ['cpp_std=c++14'])
+	default_options : ['cpp_std=c++17'])
 
 src =  ['clexer.cpp',
 	'codegen.cpp', 

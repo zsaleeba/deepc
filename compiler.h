@@ -34,8 +34,8 @@ private:
 
     // An instance of the lexer and parser are created when compiling each file.
     std::shared_ptr<Preprocessor> preProc_;
-    std::shared_ptr<CLexer>        lexer_;
-    std::shared_ptr<CParser>       parser_;
+    std::shared_ptr<CLexer>       lexer_;
+    std::shared_ptr<CParser>      parser_;
 
 private:
     // Compilation phases.

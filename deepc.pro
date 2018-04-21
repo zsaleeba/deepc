@@ -1,7 +1,8 @@
 TEMPLATE = app
-CONFIG += console c++14
+CONFIG += console
 CONFIG -= app_bundle
 CONFIG -= qt
+QMAKE_CXXFLAGS += -std=c++17
 
 flatc.name = flatc ${QMAKE_FILE_IN}
 flatc.input = FLATC_SOURCES
@@ -38,7 +39,9 @@ HEADERS += \
     sourcepos.h \
     sourcefile.h \
     cparser.h \
-    clexer.h
+    clexer.h \
+    storable.h \
+    deeptypes.h
 
 FLATC_SOURCES += \
     sourcefile.fbs
