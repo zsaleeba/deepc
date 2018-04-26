@@ -1,9 +1,17 @@
 namespace deepC.fb;
 
+union StoredAny {
+    SourceFile
+}
+
 table SourceFile {
     filename : string;
     source   : string;
     modified : ulong;
 }
 
-root_type SourceFile;
+table StoredObject {
+    obj : StoredAny;
+}
+
+root_type StoredObject;

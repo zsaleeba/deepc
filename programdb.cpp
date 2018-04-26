@@ -115,7 +115,11 @@ bool ProgramDb::getSourceFileByFileId(uint32_t fileId, SourceFileOnDatabase *sou
     }
 
     // Convert the binary form into a SourceFile.
-    const fb::SourceFile *sf = fb::GetSourceFile(v.mv_data);
+    const fb::StoredObject *so = fb::GetStoredObject(v.mv_data);
+    if (so->obj_type() != fb::StoredAny_SourceFile)
+        throw ProgramDbException(std::string("wrong type of object ") + std::to_string(so->obj_type()) + " getting source file");
+
+    const fb::SourceFile *sf = so->obj_as_SourceFile();
     std::string_view src(sf->source()->data(), sf->source()->size());
     source->setId(fileId);
     source->setFileName(sf->filename()->str());
@@ -159,7 +163,8 @@ void ProgramDb::putSourceFile(SourceFile &source)
     flatbuffers::FlatBufferBuilder builder(source.fileName().length() + source.sourceText().length() + 1024);
     auto filenameStr = builder.CreateString(source.fileName());
     auto sourceStr = builder.CreateString(std::string(source.sourceText()));
-    fb::CreateSourceFile(builder, filenameStr, sourceStr, source.modified().time_since_epoch().count());
+    flatbuffers::Offset<fb::SourceFile> srcFile = fb::CreateSourceFile(builder, filenameStr, sourceStr, source.modified().time_since_epoch().count());
+    fb::CreateStoredObject(builder, fb::StoredAny_SourceFile, srcFile.Union());
 
     MDB_val v;
     v.mv_data = builder.GetBufferPointer();
