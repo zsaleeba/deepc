@@ -15,7 +15,6 @@
 
 #include "programdb.h"
 #include "sourcefile.h"
-#include "sourcefile_generated.h"
 
 
 namespace deepC
@@ -70,7 +69,7 @@ ProgramDb::ProgramDb(const std::string &filename) :
         throw ProgramDbException(std::string("mdb_dbi_open(SourceFiles): ") + mdb_strerror(rc));
     }
 
-    rc = mdb_dbi_open(txn, "SourceFileIdsByFilename", MDB_CREATE, &sourceFilesIdsByFilenameDbi_);
+    rc = mdb_dbi_open(txn, "SourceFileIdsByFilename", MDB_CREATE, &sourceFileKeysDbi_);
     if (rc)
     {
         mdb_txn_abort(txn);
@@ -97,59 +96,52 @@ ProgramDb::~ProgramDb()
 
 
 //
-// Get a source file from the database given its file id.
+// Given a Storable object with the key set, find the object id.
+// Returns false if not found.
 //
 
-bool ProgramDb::getSourceFileByFileId(uint32_t fileId, SourceFileOnDatabase *source)
+uint32_t ProgramDb::getId(const Storable &obj)
 {
-    Transaction txn(*this, false);
-    MDB_val v;
+    // Create the key.
+    flatbuffers::FlatBufferBuilder builder;
+    obj.serialiseKey(builder);
+    MDB_val key;
+    key.mv_size = builder.GetSize();
+    key.mv_data = reinterpret_cast<void *>(builder.GetBufferPointer());
 
     // Get the record.
+    Transaction txn(*this, false);
+
     try {
-        if (!txn.getById(sourceFilesDbi_, fileId, &v))
-            return false;
+        return txn.getIdByKey(getDbHandle(obj.keyDbGroup()), key);
     }
     catch (const ProgramDbException &e) {
-        throw ProgramDbException(std::string("can't get source file by file id, ") + e.what());
+        throw ProgramDbException(std::string("can't get id, ") + e.what());
     }
-
-    // Convert the binary form into a SourceFile.
-    const fb::StoredObject *so = fb::GetStoredObject(v.mv_data);
-    if (so->obj_type() != fb::StoredAny_SourceFile)
-        throw ProgramDbException(std::string("wrong type of object ") + std::to_string(so->obj_type()) + " getting source file");
-
-    const fb::SourceFile *sf = so->obj_as_SourceFile();
-    std::string_view src(sf->source()->data(), sf->source()->size());
-    source->setId(fileId);
-    source->setFileName(sf->filename()->str());
-    source->setModified(TimePoint(Duration(sf->modified())));
-    source->setSourceText(src);
-
-    return true;
 }
 
 
 //
-// Given the source file name, find the file id.
+// Get an object given the database and id.
 //
 
-bool ProgramDb::getSourceFileIdByFilename(const std::string &filename, uint32_t *fileId)
+std::shared_ptr<Storable> ProgramDb::get(Storable::DbGroup dbg, uint32_t id)
 {
-    // Get the record.
     Transaction txn(*this, false);
-    MDB_val v;
+    MDB_val val;
 
     try {
-        if (!txn.getByString(sourceFilesIdsByFilenameDbi_, filename, &v))
-            return false;
+        // Get the record.
+        if (!txn.getById(getDbHandle(dbg), id, &val))
+            return nullptr;
+        
+        // Convert the binary form into an object.
+        const fb::StoredObject *so = fb::GetStoredObject(val.mv_data);
+        return Storable::create(id, *so);
     }
     catch (const ProgramDbException &e) {
-        throw ProgramDbException(std::string("can't get source file id, ") + e.what());
+        throw ProgramDbException(std::string("can't get by id ") + std::to_string(id) + ", " + e.what());
     }
-
-    *fileId = *reinterpret_cast<uint32_t *>(v.mv_data);
-    return true;
 }
 
 
@@ -157,49 +149,69 @@ bool ProgramDb::getSourceFileIdByFilename(const std::string &filename, uint32_t 
 // Store a SourceFile in the database.
 //
 
-void ProgramDb::putSourceFile(SourceFile &source)
+void ProgramDb::put(Storable &source)
 {
-    // Encode the SourceFile data.
-    flatbuffers::FlatBufferBuilder builder(source.fileName().length() + source.sourceText().length() + 1024);
-    auto filenameStr = builder.CreateString(source.fileName());
-    auto sourceStr = builder.CreateString(std::string(source.sourceText()));
-    flatbuffers::Offset<fb::SourceFile> srcFile = fb::CreateSourceFile(builder, filenameStr, sourceStr, source.modified().time_since_epoch().count());
-    fb::CreateStoredObject(builder, fb::StoredAny_SourceFile, srcFile.Union());
+    std::lock_guard<std::mutex> locker(writeMutex_);
+    
+    // Encode the Storable item's key and content.
+    MDB_val key;
+    keyBuilder_.Clear();
+    source.serialiseKey(keyBuilder_);
+    key.mv_data = keyBuilder_.GetBufferPointer();
+    key.mv_size = keyBuilder_.GetSize();
 
-    MDB_val v;
-    v.mv_data = builder.GetBufferPointer();
-    v.mv_size = builder.GetSize();
+    MDB_val val;
+    contentBuilder_.Clear();
+    source.serialiseContent(contentBuilder_);
+    val.mv_data = contentBuilder_.GetBufferPointer();
+    val.mv_size = contentBuilder_.GetSize();
 
+    MDB_dbi contentDbi = getDbHandle(source.contentDbGroup());
+    MDB_dbi keyDbi     = getDbHandle(source.keyDbGroup());
+    
     // Do we already know the file id?
-    std::lock_guard locker(sourceFilesWriteLock_);
     Transaction txn(*this, true);
-    uint32_t fileId = source.id();
-    if (fileId == 0)
+
+    uint32_t id = source.id();
+    if (id == 0)
     {
         // See if it already exists in the database.
-        getSourceFileIdByFilename(source.fileName(), &fileId);
+        id = txn.getIdByKey(keyDbi, key);
     }
 
     // If this file has no file id, make one.
-    if (fileId == 0)
+    if (id == 0)
     {
         // Store the row under a new id.
-        fileId = txn.addRow(sourceFilesDbi_, v);
+        id = txn.addRow(contentDbi, val);
 
         // Add the name to id lookup.
-        txn.addStringToIdMapping(sourceFilesIdsByFilenameDbi_, source.fileName(), fileId);
-
-        // Take note of the id.
-        source.setId(fileId);
+        source.setId(id);
+        txn.addKeyToIdMapping(keyDbi, key, id);
     }
     else
     {
         // Store an existing row.
-        txn.putRow(sourceFilesDbi_, fileId, v);
+        txn.putRow(contentDbi, id, val);
     }
 
     // Commit the transaction.
     txn.commit();
+}
+
+
+//
+// Convert a database group id to the handle for that database.
+//
+
+MDB_dbi ProgramDb::getDbHandle(Storable::DbGroup db) const
+{
+    switch (db)
+    {
+    case Storable::DbGroup::SourceFiles:    return sourceFilesDbi_;
+    case Storable::DbGroup::SourceFileKeys: return sourceFileKeysDbi_;
+    default:                                throw ProgramDbException("invalid db group");
+    }
 }
 
 
@@ -276,30 +288,31 @@ bool ProgramDb::Transaction::getById(MDB_dbi dbi, uint32_t id, MDB_val *v)
 
 
 //
-// Get an object by its string key.
+// Get an id by its key. Returns 0 if not found.
 //
 
-bool ProgramDb::Transaction::getByString(MDB_dbi dbi, const std::string &key, MDB_val *v)
+uint32_t ProgramDb::Transaction::getIdByKey(MDB_dbi dbi, const MDB_val &key)
 {
-    MDB_val k;
-    k.mv_size = key.length();
-    k.mv_data = reinterpret_cast<void *>(const_cast<char *>((key.data())));
-    int rc = mdb_get(txn_, dbi, &k, v);
+    MDB_val val;
+    int rc = mdb_get(txn_, dbi, const_cast<MDB_val *>(&key), &val);
     if (rc)
     {
         if (rc == MDB_NOTFOUND)
         {
             // Not found.
-            return false;
+            return 0;
         }
         else
         {
             // Failed.
-            throw ProgramDbException(std::string("can't get by key '") + key + "': " + mdb_strerror(rc));
+            throw ProgramDbException(mdb_strerror(rc));
         }
     }
+    
+    if (val.mv_size != sizeof(uint32_t))
+        throw ProgramDbException("incorrect size object");
 
-    return true;
+    return *reinterpret_cast<uint32_t *>(&val.mv_data);
 }
 
 
@@ -360,18 +373,15 @@ void ProgramDb::Transaction::putRow(MDB_dbi dbi, uint32_t id, const MDB_val &val
 // eg. filename to file id.
 //
 
-void ProgramDb::Transaction::addStringToIdMapping(MDB_dbi dbi, const std::string &str, uint32_t id)
+void ProgramDb::Transaction::addKeyToIdMapping(MDB_dbi dbi, const MDB_val &key, uint32_t id)
 {
-    MDB_val key;
-    key.mv_size = str.size();
-    key.mv_data = reinterpret_cast<void *>(const_cast<char *>(str.data()));
     MDB_val val;
     val.mv_size = sizeof(id);
     val.mv_data = reinterpret_cast<void *>(id);
 
-    int rc = mdb_put(txn_, dbi, &key, &val, 0);
+    int rc = mdb_put(txn_, dbi, const_cast<MDB_val *>(&key), &val, 0);
     if (rc)
-        throw ProgramDbException(std::string("can't put row ") + std::to_string(id) + ": " + mdb_strerror(rc));
+        throw ProgramDbException(std::string("can't put mapping ") + std::to_string(id) + ": " + mdb_strerror(rc));
 }
 
 

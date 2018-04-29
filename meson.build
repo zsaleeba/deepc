@@ -12,12 +12,13 @@ src =  ['clexer.cpp',
 	'preprocessor.cpp', 
 	'programdb.cpp', 
 	'sourcefile.cpp',
+	'storable.cpp',
 	'token.cpp']
 
 flatc = find_program('flatc')
 gen_src = custom_target('gen-sourcefile',
-	input : ['sourcefile.fbs'],
-	output: ['sourcefile_generated.h'],
+	input : ['storedobject.fbs'],
+	output: ['storedobject_generated.h'],
 	command: [flatc, '--cpp', '--binary', '@INPUT@'])
 
 lmdb_lib = meson.get_compiler('cpp').find_library('lmdb')

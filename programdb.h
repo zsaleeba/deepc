@@ -69,11 +69,11 @@ public:
 
         MDB_txn *getTxn() { return txn_; }
 
-        bool     getById(MDB_dbi dbi, uint32_t id, MDB_val *v);
-        bool     getByString(MDB_dbi dbi, const std::string &key, MDB_val *v);
+        bool     getById(MDB_dbi dbi, uint32_t id, MDB_val *val);
+        uint32_t getIdByKey(MDB_dbi dbi, const MDB_val &key);
         uint32_t addRow(MDB_dbi dbi, const MDB_val &val);
         void     putRow(MDB_dbi dbi, uint32_t id, const MDB_val &val);
-        void     addStringToIdMapping(MDB_dbi dbi, const std::string &str, uint32_t id);
+        void     addKeyToIdMapping(MDB_dbi dbi, const MDB_val &key, uint32_t id);
     };
 
 
@@ -84,14 +84,18 @@ private:
 
     // The sub-databases we plan to use.
     MDB_dbi  sourceFilesDbi_;
-    MDB_dbi  sourceFilesIdsByFilenameDbi_;
+    MDB_dbi  sourceFileKeysDbi_;
 
-    // Write locks for each of the sub-databases;
-    std::mutex sourceFilesWriteLock_;
+    // Write lock.
+    std::mutex writeMutex_;
+    flatbuffers::FlatBufferBuilder keyBuilder_;
+    flatbuffers::FlatBufferBuilder contentBuilder_;
 
 protected:
     // Generate a new id in sourceFiles.
     uint32_t createSourceFilesId(Transaction &txn);
+    uint32_t getIdByKey(Transaction &txn, MDB_dbi dbi, const Storable &source);
+    MDB_dbi  getDbHandle(Storable::DbGroup db) const;
 
 public:
     // Constructor for the source bag.
@@ -102,9 +106,11 @@ public:
     MDB_env *getEnv()       { return env_; }
 
     // Source file access.
-    bool getSourceFileByFileId(uint32_t fileId, SourceFileOnDatabase *source);
-    bool getSourceFileIdByFilename(const std::string &filename, uint32_t *fileId);
-    void putSourceFile(SourceFile &source);
+    
+    // Get/put Storable items.
+    uint32_t getId(const Storable &obj);
+    std::shared_ptr<Storable> get(Storable::DbGroup dbg, uint32_t id);
+    void put(Storable &source);
 };
 
 

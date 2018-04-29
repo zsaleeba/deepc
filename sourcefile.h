@@ -33,6 +33,7 @@ protected:
 
 protected:
     // Constructors.
+    explicit SourceFile(uint32_t id) : Storable(id) {}
     explicit SourceFile(const std::string &fileName) : fileName_(fileName) {}
     explicit SourceFile(const std::string &fileName, const TimePoint &modified) : fileName_(fileName), modified_(modified) {}
     virtual ~SourceFile() {}
@@ -46,6 +47,15 @@ public:
     void setFileName(const std::string &fileName) { fileName_ = fileName; }
     void setModified(const TimePoint &modified)   { modified_ = modified; }
     void setSourceText(std::string_view &source)  { sourceText_ = source; }
+
+    // Which databases to use for the content and the key mapping.
+    DbGroup contentDbGroup() const override { return Storable::DbGroup::SourceFiles; }
+    DbGroup keyDbGroup() const override     { return Storable::DbGroup::SourceFileKeys; }
+    
+    // To store this type in the database.
+    void serialiseContent(flatbuffers::FlatBufferBuilder &builder) const override;
+    void serialiseKey(flatbuffers::FlatBufferBuilder &builder) const override;
+    void unserialise(const fb::StoredObject &so) override;
 };
 
 
@@ -68,9 +78,6 @@ public:
     // Constructors.
     explicit SourceFileOnFilesystem(const std::string &fileName);
     virtual ~SourceFileOnFilesystem();
-    
-    // To store this type in the database.
-    void store(ProgramDb &pdb) override;
 };
 
 
@@ -89,11 +96,8 @@ private:
 
 public:
     // Constructors.
-    explicit SourceFileOnDatabase(std::shared_ptr<ProgramDb> pdb, const std::string &fileName);
+    explicit SourceFileOnDatabase(uint32_t id) : SourceFile(id) {}
     virtual ~SourceFileOnDatabase();
-    
-    // To store this type in the database.
-    void store(ProgramDb &pdb) override;
 };
 
 

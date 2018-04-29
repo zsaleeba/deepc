@@ -25,7 +25,8 @@ SOURCES += main.cpp \
     fail.cpp \
     sourcefile.cpp \
     cparser.cpp \
-    clexer.cpp
+    clexer.cpp \
+    storable.cpp
 
 HEADERS += \
     token.h \
@@ -44,6 +45,6 @@ HEADERS += \
     deeptypes.h
 
 FLATC_SOURCES += \
-    sourcefile.fbs
+    storedobject.fbs
 
 unix|win32: LIBS += -llmdb

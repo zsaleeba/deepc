@@ -13,10 +13,51 @@
 #include "sourcefile.h"
 #include "programdb.h"
 #include "deeptypes.h"
+#include "storedobject_generated.h"
 
 
 namespace deepC
 {
+
+
+//
+// Serialise the content of this object so it can be stored in the database.
+//
+
+void SourceFile::serialiseContent(flatbuffers::FlatBufferBuilder &builder) const
+{
+    // Encode the SourceFile data.
+    auto filenameStr = builder.CreateString(fileName_);
+    auto sourceStr = builder.CreateString(std::string(sourceText_));
+    auto srcFile = fb::CreateSourceFile(builder, filenameStr, sourceStr, modified_.time_since_epoch().count());
+    fb::CreateStoredObject(builder, fb::StoredAny_SourceFile, srcFile.Union());
+}
+
+
+//
+// Serialise the key of this object so it can be found in the database.
+//
+
+void SourceFile::serialiseKey(flatbuffers::FlatBufferBuilder &builder) const
+{
+    // Encode just the key.
+    auto keyStr = builder.CreateString(fileName_);
+    auto srcKey = fb::CreateStringKey(builder, keyStr);
+    fb::CreateStoredObject(builder, fb::StoredAny_StringKey, srcKey.Union());
+}
+
+
+//
+// Fill out this object from a database serialised form.
+//
+
+void SourceFile::unserialise(const fb::StoredObject &so)
+{
+    const fb::SourceFile *sf = so.obj_as_SourceFile();
+    fileName_ = sf->filename()->str();
+    modified_ = TimePoint(Duration(sf->modified()));
+    sourceText_ = std::string_view(sf->source()->data(), sf->source()->size());
+}
 
 
 //
@@ -73,43 +114,11 @@ SourceFileOnFilesystem::~SourceFileOnFilesystem()
 
 
 //
-// To store this type in the database.
-//
-
-void SourceFileOnFilesystem::store(ProgramDb &pdb)
-{
-    pdb.putSourceFile(*this);
-}
-
-
-//
-// Constructor for SourceFileOnDatabase.
-//
-
-SourceFileOnDatabase::SourceFileOnDatabase(std::shared_ptr<ProgramDb> pdb, const std::string &fileName) :
-    SourceFile(fileName), pdb_(pdb)
-{
-    pdb->getSourceFileIdByFilename(fileName, &id_);
-    pdb->getSourceFileByFileId(id_, this);
-}
-
-
-//
 // Destructor for SourceFileOnDatabase.
 //
 
 SourceFileOnDatabase::~SourceFileOnDatabase()
 {
-}
-
-
-//
-// To store this type in the database.
-//
-
-void SourceFileOnDatabase::store(ProgramDb &pdb)
-{
-    pdb.putSourceFile(*this);
 }
 
 

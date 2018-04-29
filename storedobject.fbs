@@ -1,13 +1,18 @@
 namespace deepC.fb;
 
 union StoredAny {
-    SourceFile
+    SourceFile,
+    StringKey
 }
 
 table SourceFile {
     filename : string;
     source   : string;
     modified : ulong;
+}
+
+table StringKey {
+    key : string;
 }
 
 table StoredObject {
