@@ -1,8 +1,10 @@
 #include "storable.h"
-#include "flatbuffers/flatbuffers.h"
 #include "deeptypes.h"
 #include "sourcefile.h"
 #include "programdb.h"
+#include "flatbuffers/flatbuffers.h"
+#include "storedobject_generated.h"
+
 
 namespace deepC
 {

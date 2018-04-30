@@ -20,6 +20,7 @@
 
 #include "sourcefile.h"
 #include "deeptypes.h"
+#include "flatbuffers/flatbuffers.h"
 
 
 namespace deepC

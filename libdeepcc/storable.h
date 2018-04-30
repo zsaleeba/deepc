@@ -2,18 +2,24 @@
 #define STORABLE_H
 
 #include <chrono>
+#include <memory>
 
-#include "flatbuffers/flatbuffers.h"
 #include "deeptypes.h"
-#include "storedobject_generated.h"
 
+
+// Forward declarations.
+namespace flatbuffers {
+    class FlatBufferBuilder;
+}
 
 namespace deepC
 {
 
-
-// Forward declarations.
 class ProgramDb;
+
+namespace fb {
+    struct StoredObject;
+}
 
 
 //

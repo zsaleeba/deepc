@@ -15,6 +15,7 @@
 
 #include "programdb.h"
 #include "sourcefile.h"
+#include "storedobject_generated.h"
 
 
 namespace deepC
