@@ -61,6 +61,37 @@ void SourceFile::unserialise(const fb::StoredObject &so)
 
 
 //
+// Split the file into lines.
+//
+
+const std::vector<std::string_view> &SourceFile::makeLines()
+{
+    std::string_view::size_type nextPos = 0;
+    lines_.clear();
+
+    for (std::string_view::size_type pos = 0; pos != std::string_view::npos; pos = nextPos)
+    {
+        nextPos = sourceText_.find("\n", pos);
+        if (nextPos != std::string_view::npos)
+        {
+            // Add a line before the end of the file.
+            lines_.push_back(std::string_view(&sourceText_[pos], nextPos - pos));
+        }
+        else
+        {
+            // Add a line which isn't EOL terminated.
+            if (sourceText_.size() > pos)
+            {
+                lines_.push_back(std::string_view(&sourceText_[pos], sourceText_.size() - pos));
+            }
+        }
+    }
+
+    return lines_;
+}
+
+
+//
 // Constructor for SourceFileOnFilesystem: read a file, get the modification time and contents.
 //
 

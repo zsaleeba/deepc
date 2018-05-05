@@ -7,6 +7,7 @@
 #include <chrono>
 #include <mutex>
 #include <memory>
+#include <vector>
 
 #include "storable.h"
 #include "deeptypes.h"
@@ -31,12 +32,18 @@ protected:
     TimePoint        modified_;      // When it was last modified.
     std::string_view sourceText_;    // The full source text.
 
+    std::vector<std::string_view> lines_; // The source file split into lines.
+    bool             haveLines_;     // Whether we've lazily created lines_ yet.
+
 protected:
     // Constructors.
-    explicit SourceFile(uint32_t id) : Storable(id) {}
-    explicit SourceFile(const std::string &fileName) : fileName_(fileName) {}
-    explicit SourceFile(const std::string &fileName, const TimePoint &modified) : fileName_(fileName), modified_(modified) {}
+    explicit SourceFile(uint32_t id) : Storable(id), haveLines_(false) {}
+    explicit SourceFile(const std::string &fileName) : fileName_(fileName), haveLines_(false) {}
+    explicit SourceFile(const std::string &fileName, const TimePoint &modified) : fileName_(fileName), modified_(modified), haveLines_(false) {}
     virtual ~SourceFile() {}
+
+    // Split the file into lines.
+    const std::vector<std::string_view> &makeLines();
     
 public:
     // Accessors.
@@ -47,6 +54,9 @@ public:
     void setFileName(const std::string &fileName) { fileName_ = fileName; }
     void setModified(const TimePoint &modified)   { modified_ = modified; }
     void setSourceText(std::string_view &source)  { sourceText_ = source; }
+
+    // Split the file into lines.
+    const std::vector<std::string_view> &getLines() { if (haveLines_) return lines_; else return makeLines(); }
 
     // Which databases to use for the content and the key mapping.
     DbGroup contentDbGroup() const override { return Storable::DbGroup::SourceFiles; }
