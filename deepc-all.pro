@@ -3,4 +3,5 @@ TEMPLATE = subdirs
 SUBDIRS += \
     libdeepcc \
     deepc \
-    tests
+    tests \
+    deepcserv

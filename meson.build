@@ -8,4 +8,5 @@ pthread_lib = meson.get_compiler('cpp').find_library('pthread')
 
 subdir('libdeepcc')
 subdir('deepc')
+subdir('deepcserv')
 subdir('tests')
